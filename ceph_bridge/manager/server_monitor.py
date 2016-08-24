@@ -1,30 +1,36 @@
 
+"""While the cluster monitor pays attention to events about Ceph clusters
+
+(which span non-disjoint sets of servers), the server monitor just pays
+
+attention to individual hosts with no regard to the relations between them.
+
 """
-While the cluster monitor pays attention to events about Ceph clusters (which
-span non-disjoint sets of servers), the server monitor just pays attention to
-individual hosts with no regard to the relations between them.
-"""
-from collections import defaultdict
-import json
-import datetime
-
-import gevent
-from dateutil import tz
-import logging
-
-from gevent import greenlet
-from gevent import event
-
-from ceph_bridge.gevent_util import nosleep
-from ceph_bridge.logging import LOG as tendrl_log
-from ceph_bridge.manager import config
 
 # The type name for hosts and osds in the CRUSH map (if users have their
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
 from ceph_bridge import ceph
-from ceph_bridge.types import OsdMap, MonMap, ServiceId
-from ceph_bridge.persistence.servers import Server, Service
+from ceph_bridge.gevent_util import nosleep
+from ceph_bridge.logging import LOG as tendrl_log
+from ceph_bridge.manager import config
+from ceph_bridge.persistence.servers import Server
+from ceph_bridge.persistence.servers import Service
+from ceph_bridge.types import MonMap
+from ceph_bridge.types import OsdMap
+from ceph_bridge.types import ServiceId
 from ceph_bridge.util import now
+
+
+from collections import defaultdict
+import datetime
+from dateutil import tz
+import json
+
+import gevent
+from gevent import event
+from gevent import greenlet
+import logging
+
 
 CRUSH_HOST_TYPE = config.get('bridge', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('bridge', 'crush_osd_type')
@@ -43,9 +49,10 @@ class GrainsNotFound(Exception):
 
 
 class ServerState(object):
-    """
-    A Ceph server, may be something we have had a heartbeat from or
+    """A Ceph server, may be something we have had a heartbeat from or
+
     may be something we learned about from Ceph.
+
     """
 
     def __init__(
@@ -72,10 +79,10 @@ class ServerState(object):
 
     @property
     def clusters(self):
-        """
-        Which clusters is this server involved with?
+        """Which clusters is this server involved with?
 
         return: A list of zero or more FSIDs
+
         """
         return list(set([service.fsid for service in self.services]))
 
@@ -84,8 +91,8 @@ class ServerState(object):
 
 
 class ServiceState(object):
-    """
-    A Ceph service, this object is used to track its affinity to a server
+    """A Ceph service, this object is used to track its affinity to a server
+
     """
 
     def __init__(self, fsid, service_type, service_id):
@@ -121,12 +128,14 @@ class ServiceState(object):
 
 
 class ServerMonitor(greenlet.Greenlet):
-    """
-    This class receives updates about servers and their services from two
+    """This class receives updates about servers and their services from two
+
     sources:
 
     - The ceph.services salt message from managed servers
+
     - Updates to the OSD map which may tell us about unmanaged servers
+
     """
 
     def __init__(self, persister, eventer):
@@ -163,7 +172,7 @@ class ServerMonitor(greenlet.Greenlet):
                         log.debug("ServerMonitor got ceph/server message")
                         try:
                             self.on_server_heartbeat(s_data['id'], s_data)
-                        except:
+                        except Exception:
                             log.debug(
                                 "Message detail: %s" % json.dumps(s_data)
                             )
@@ -176,12 +185,14 @@ class ServerMonitor(greenlet.Greenlet):
         log.info("Completed %s" % self.__class__.__name__)
 
     def get_hostname_to_osds(self, osd_map):
-        """
-        Map 'hostname' to OSD: hostname in this context actually means
+        """Map 'hostname' to OSD: hostname in this context actually means
+
         CRUSH node name where node is of type 'host'.
 
         In a default Ceph deployment this will indeed be the hostname, but
+
         a logical server can have multiple CRUSH nodes with arbitrary names.
+
         """
         osd_tree = osd_map['tree']
         nodes_by_id = dict((n["id"], n) for n in osd_tree["nodes"])
@@ -251,12 +262,14 @@ class ServerMonitor(greenlet.Greenlet):
 
     @nosleep
     def on_osd_map(self, osd_map):
-        """
-        For when a new OSD map is received: we may infer the existence of
+        """For when a new OSD map is received: we may infer the existence of
+
         hosts from the CRUSH map if the hosts are not all sending
+
         us data with salt.
 
         :param osd_map: The data from an OsdMap sync object
+
         """
         log.debug("ServerMonitor.on_osd_map: epoch %s" % osd_map['epoch'])
 
@@ -340,12 +353,14 @@ class ServerMonitor(greenlet.Greenlet):
 
     @nosleep
     def on_mds_map(self, fsid, mds_map):
-        """
-        When a new MDS map is received, use it to eliminate any MDS
+        """When a new MDS map is received, use it to eliminate any MDS
+
         ServiceState records that no longer exist in the real world.
 
         :param fsid: Pass in fsid string because mds map doesn't include it
+
         :param mds_map: The MDS map sync object
+
         """
         map_mds = set([ServiceId(
             fsid, 'mds', i['name']
@@ -359,9 +374,10 @@ class ServerMonitor(greenlet.Greenlet):
 
     @nosleep
     def on_mon_map(self, mon_map):
-        """
-        When a new mon map is received, use it to eliminate any mon
+        """When a new mon map is received, use it to eliminate any mon
+
         ServiceState records that no longer exist in the real world.
+
         """
         map_mons = set(
             [ServiceId(mon_map['fsid'],
@@ -379,12 +395,16 @@ class ServerMonitor(greenlet.Greenlet):
 
     @nosleep
     def on_server_heartbeat(self, fqdn, server_heartbeat):
-        """
-        Call back for when a ceph.service message is received from a salt
+        """Call back for when a ceph.service message is received from a salt
+
         minion. This is actually a fairly simple operation of updating the
+
         in memory ServerState to reflect what is in the message, but it's
+
         convoluted because we may be seeing a new server, a known server,
+
         or a server which was known but unmanaged.
+
         """
         log.debug("ServerMonitor.on_server_heartbeat: %s" % fqdn)
         new_server = True
@@ -618,7 +638,7 @@ class ServerMonitor(greenlet.Greenlet):
                          "record {0}".format(old_server_state.fqdn)
                          )
                 del self.servers[old_server_state.fqdn]
-                # TODO (rohan) Implement delete key/dir in etcdobj
+                # TODO(rohan) Implement delete key/dir in etcdobj
                 # self._persister.delete_server(old_server_state.fqdn)
         log.debug("Updating service %s" % service_state.service_id)
         self._persister.create_service(
@@ -634,9 +654,10 @@ class ServerMonitor(greenlet.Greenlet):
         self._complete.set()
 
     def get_all_cluster(self, fsid):
-        """
-        All the ServerStates which are involved in
+        """All the ServerStates which are involved in
+
         this cluster (i.e. hosting a service with this FSID)
+
         """
         return list(
             set(
@@ -647,19 +668,22 @@ class ServerMonitor(greenlet.Greenlet):
         )
 
     def get_all(self):
-        """Give me all the ServerStates"""
+        """Give me all the ServerStates
+
+        """
         return self.servers.values()
 
     def get_one(self, fqdn):
-        """
-        Give me a single ServerState, looked up by FQDN.
+        """Give me a single ServerState, looked up by FQDN.
+
         """
         return self.servers[fqdn]
 
     def get_by_service(self, service_id):
-        """
-        Return the FQDN of the server associated with this service, or
+        """Return the FQDN of the server associated with this service, or
+
         None if the service isn't found or isn't associated with a server.
+
         """
         try:
             return self.services[service_id].server_state
@@ -668,10 +692,12 @@ class ServerMonitor(greenlet.Greenlet):
             return None
 
     def list_by_service(self, service_ids):
-        """
-        Return a list of 2-tuples mapping service ID to FQDN
+        """Return a list of 2-tuples mapping service ID to FQDN
+
         for the specified services, where the FQDN is None if
+
         service not found.
+
         """
         result = []
         for service_id in service_ids:
@@ -680,13 +706,16 @@ class ServerMonitor(greenlet.Greenlet):
         return result
 
     def get_services(self, service_ids):
-        """
-        Look up a list of ServiceState objects by ID.
+        """Look up a list of ServiceState objects by ID.
 
         :param service_ids: A list of ServiceId
+
         :returns: A list of the same length as service_ids,
+
         containing ServiceState
+
                 objects or None for any unfound ServiceIds.
+
         """
         return [self.services.get(
             service_id,
@@ -694,9 +723,10 @@ class ServerMonitor(greenlet.Greenlet):
         ) for service_id in service_ids]
 
     def delete(self, fqdn):
-        """
-        Forget about this server.  Does not prevent it popping back into
+        """Forget about this server.  Does not prevent it popping back into
+
         existence if we see reference to it in an incoming event.
+
         """
         server_state = self.servers[fqdn]
         for service in server_state.services.values():
@@ -711,7 +741,7 @@ class ServerMonitor(greenlet.Greenlet):
             # is not present in hostname_to_server any more
             del self.hostname_to_server[server_state.hostname]
         del self.servers[fqdn]
-        # TODO (rohan) Implement delete key/dir in etcdobj
+        # TODO(rohan) Implement delete key/dir in etcdobj
         # self._persister.delete_server(fqdn)
 
     def delete_cluster(self, fsid):
@@ -736,8 +766,8 @@ class ServerMonitor(greenlet.Greenlet):
         del self.fsid_services[fsid]
 
     def dump(self, server_state):
-        """
-        Convert a ServerState into a serializable format
+        """Convert a ServerState into a serializable format
+
         """
         return {
             'fqdn': server_state.fqdn,
@@ -755,12 +785,14 @@ class ServerMonitor(greenlet.Greenlet):
         }
 
     def dump_cluster(self, server_state, cluster):
-        """
-        Convert a ServerState into a serializable format, including contextual
+        """Convert a ServerState into a serializable format, including contextual
+
         information for the server's membership in a particular cluster.
 
         :param server_state: The ServerState to be dumped
+
         :param cluster: ClusterMonitor context
+
         """
 
         services = [

@@ -1,10 +1,10 @@
-from unittest import TestCase
-from mock import MagicMock, patch
-
 from ceph_bridge.manager.crush_node_request_factory \
     import CrushNodeRequestFactory
 from ceph_bridge.manager.user_request import RadosRequest
 import json
+from mock import MagicMock
+from mock import patch
+from unittest import TestCase
 
 
 class TestCrushNodeFactory(TestCase):

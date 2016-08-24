@@ -1,16 +1,27 @@
-import traceback
-import gevent.event
 import etcd
-import uuid
+import gevent.event
 import json
 import time
+import traceback
 
-from tendrl.ceph_bridge.manager import config
+from tendrl.ceph_bridge.common.types import CLUSTER
+from tendrl.ceph_bridge.common.types import CRUSH_MAP
+from tendrl.ceph_bridge.common.types import CRUSH_NODE
+from tendrl.ceph_bridge.common.types import CRUSH_RULE
+from tendrl.ceph_bridge.common.types import CRUSH_TYPE
+from tendrl.ceph_bridge.common.types import NotFound
+from tendrl.ceph_bridge.common.types import OSD
+from tendrl.ceph_bridge.common.types import OSD_MAP
+from tendrl.ceph_bridge.common.types import OsdMap
+from tendrl.ceph_bridge.common.types import POOL
+from tendrl.ceph_bridge.common.types import SERVER
+from tendrl.ceph_bridge.common.types import ServiceId
+from tendrl.ceph_bridge.common.types import SYNC_OBJECT_STR_TYPE
+
 from tendrl.ceph_bridge.log import log
-from tendrl.ceph_bridge.common.types \
-    import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL,\
-    CLUSTER, CRUSH_NODE, CRUSH_MAP, CRUSH_RULE, CRUSH_TYPE, ServiceId,\
-    NotFound, SERVER
+from tendrl.ceph_bridge.manager import config
+
+import uuid
 
 
 class RpcInterface(object):
@@ -19,8 +30,8 @@ class RpcInterface(object):
         self._manager = manager
 
     def __getattribute__(self, item):
-        """
-        Wrap functions with logging
+        """Wrap functions with logging
+
         """
         if item.startswith('_'):
             return object.__getattribute__(self, item)
@@ -33,7 +44,7 @@ class RpcInterface(object):
                     try:
                         rc = attr(*args, **kwargs)
                         log.debug("RpcInterface << %s" % item)
-                    except:
+                    except Exception:
                         log.exception("RpcInterface !! %s" % item)
                         raise
                     return rc
@@ -70,8 +81,8 @@ class RpcInterface(object):
             raise NotFound(POOL, pool_id)
 
     def get_cluster(self, fs_id):
-        """
-        Returns a dict, or None if not found
+        """Returns a dict, or None if not found
+
         """
         try:
             cluster = self._manager.clusters[fs_id]
@@ -97,18 +108,24 @@ class RpcInterface(object):
         self._manager.delete_cluster(fs_id)
 
     def get_sync_object(self, fs_id, object_type, path=None):
-        """
-        Get one of the objects that ClusterMonitor keeps a copy of from
+        """Get one of the objects that ClusterMonitor keeps a copy of from
+
         the mon, such as the cluster maps.
 
         :param fs_id: The fsid of a cluster
+
         :param object_type: String, one of SYNC_OBJECT_TYPES
+
         :param path: List, optional, a path within the object to return
+
         instead of the whole thing
 
         :return: the requested data, or None if it was not found
+
         (including if any element of ``path``
+
                  was not found)
+
         """
 
         if path:
@@ -131,8 +148,8 @@ class RpcInterface(object):
                                             )
 
     def update(self, fs_id, object_type, object_id, attributes):
-        """
-        Modify an object in a cluster.
+        """Modify an object in a cluster.
+
         """
         cluster = self._fs_resolve(fs_id)
 
@@ -170,8 +187,8 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def apply(self, fs_id, object_type, object_id, command):
-        """
-        Apply commands that do not modify an object in a cluster.
+        """Apply commands that do not modify an object in a cluster.
+
         """
         cluster = self._fs_resolve(fs_id)
 
@@ -184,8 +201,8 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def get_valid_commands(self, fs_id, object_type, object_ids):
-        """
-        Determine what commands can be run on OSD object_ids
+        """Determine what commands can be run on OSD object_ids
+
         """
         if object_type != OSD:
             raise NotImplementedError(object_type)
@@ -200,8 +217,8 @@ class RpcInterface(object):
         return valid_commands
 
     def create(self, fs_id, object_type, attributes):
-        """
-        Create a new object in a cluster
+        """Create a new object in a cluster
+
         """
         cluster = self._fs_resolve(fs_id)
 
@@ -223,8 +240,8 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def get(self, fs_id, object_type, object_id):
-        """
-        Get one object from a particular cluster.
+        """Get one object from a particular cluster.
+
         """
 
         cluster = self._fs_resolve(fs_id)
@@ -250,8 +267,8 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def list(self, fs_id, object_type, list_filter):
-        """
-        Get many objects
+        """Get many objects
+
         """
 
         cluster = self._fs_resolve(fs_id)
@@ -288,7 +305,9 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def _dump_request(self, request):
-        """UserRequest to JSON-serializable form"""
+        """UserRequest to JSON-serializable form
+
+        """
         return {
             'id': request.id,
             'state': request.state,
@@ -303,8 +322,8 @@ class RpcInterface(object):
         }
 
     def get_request(self, request_id):
-        """
-        Get a JSON representation of a UserRequest
+        """Get a JSON representation of a UserRequest
+
         """
         try:
             return self._dump_request(
@@ -352,11 +371,12 @@ class RpcInterface(object):
         ]
 
     def server_by_service(self, services):
-        """
-        Return a list of 2-tuples mapping of service ID to server FQDN
+        """Return a list of 2-tuples mapping of service ID to server FQDN
 
         Note that we would rather return a dict but tuple dict keys are
+
         awkward to serialize
+
         """
         result = self._manager.servers.list_by_service(
             [ServiceId(*s) for s in services])
@@ -449,9 +469,10 @@ class EtcdRPC(object):
 
 
 class EtcdThread(gevent.greenlet.Greenlet):
-    """
-    Present a ZeroRPC API for users
+    """Present a ZeroRPC API for users
+
     to request state changes.
+
     """
 
     # In case server.run throws an exception, prevent
@@ -477,7 +498,7 @@ class EtcdThread(gevent.greenlet.Greenlet):
             try:
                 log.info("%s run..." % self.__class__.__name__)
                 self._server.run()
-            except:
+            except Exception:
                 log.error(traceback.format_exc())
                 self._complete.wait(self.EXCEPTION_BACKOFF)
 

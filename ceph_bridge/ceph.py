@@ -1,15 +1,15 @@
 
 from glob import glob
 import hashlib
+import json
+import msgpack
 import os
 import re
 import socket
+import struct
 import subprocess
 import tempfile
 import time
-import struct
-import msgpack
-import json
 
 # Note: do not import ceph modules at this scope, otherwise this module won't
 # be able to cleanly talk to us about systems where ceph isn't installed yet.
@@ -32,33 +32,40 @@ class MonitoringError(Exception):
 
 
 class RadosError(MonitoringError):
-    """
-    Something went wrong talking to Ceph with librados
+    """Something went wrong talking to Ceph with librados
+
     """
     pass
 
 
 class AdminSocketError(MonitoringError):
-    """
-    Something went wrong talking to Ceph with a /var/run/ceph socket.
+    """Something went wrong talking to Ceph with a /var/run/ceph socket.
+
     """
     pass
 
 
 def rados_command(cluster_handle, prefix, args=None, decode=True):
-    """
-    Safer wrapper for ceph_argparse.json_command, which raises
+    """Safer wrapper for ceph_argparse.json_command, which raises
+
     Error exception instead of relying on caller to check return
+
     codes.
 
     Error exception can result from:
+
     * Timeout
+
     * Actual legitimate errors
+
     * Malformed JSON output
 
     return: Decoded object from ceph, or None if empty string returned.
+
             If decode is False, return a string (the data returned by
+
             ceph command)
+
     """
     if args is None:
         args = {}
@@ -66,8 +73,8 @@ def rados_command(cluster_handle, prefix, args=None, decode=True):
     argdict = args.copy()
     argdict['format'] = 'json'
 
-    import rados
     from ceph_argparse import json_command
+    import rados
 
     ret, outbuf, outs = json_command(cluster_handle,
                                      prefix=prefix,
@@ -94,15 +101,19 @@ def rados_command(cluster_handle, prefix, args=None, decode=True):
 # get ceph's python code into site-packages so that we
 # can borrow things like this.
 def admin_socket(asok_path, cmd, fmt=''):
-    """
-    Send a daemon (--admin-daemon) command 'cmd'.  asok_path is the
+    """Send a daemon (--admin-daemon) command 'cmd'.  asok_path is the
+
     path to the admin socket; cmd is a list of strings
+
     """
 
-    from ceph_argparse import parse_json_funcsigs, validate_command
+    from ceph_argparse import parse_json_funcsigs
+    from ceph_argparse import validate_command
 
     def do_sockio(path, cmd):
-        """ helper: do all the actual low-level stream I/O """
+        """helper: do all the actual low-level stream I/O
+
+        """
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.connect(path)
         try:
@@ -170,9 +181,10 @@ def md5(raw):
 
 
 def pg_summary(pgs_brief):
-    """
-    Convert an O(pg count) data structure into an O(osd count) digest listing
+    """Convert an O(pg count) data structure into an O(osd count) digest listing
+
     the number of PGs in each combination of states.
+
     """
 
     osds = {}
@@ -216,10 +228,12 @@ def pg_summary(pgs_brief):
 
 
 def transform_crushmap(data, operation):
-    """
-    Invokes crushtool to compile or de-compile data when operation == 'set'
+    """Invokes crushtool to compile or de-compile data when operation == 'set'
+
     or 'get' respectively
+
     returns (0 on success, transformed crushmap, errors)
+
     """
     # write data to a tempfile because crushtool can't handle stdin :(
     with tempfile.NamedTemporaryFile(delete=True) as f:
@@ -241,14 +255,16 @@ def transform_crushmap(data, operation):
 
 
 def rados_commands(fsid, cluster_name, commands):
-    """
-    Passing in both fsid and cluster_name, because the caller
+    """Passing in both fsid and cluster_name, because the caller
+
     should always know both, and it saves this function the trouble
+
     of looking up one from the other.
+
     """
 
-    import rados
     from ceph_argparse import json_command
+    import rados
 
     # Open a RADOS session
     cluster_handle = rados.Rados(
@@ -296,9 +312,9 @@ def rados_commands(fsid, cluster_name, commands):
     # For all RADOS commands, we include the cluster map versions
     # in the response, so that the caller knows which versions to
     # wait for in order to see the consequences of their actions.
-    # TODO: not all commands will require version info on completion,
+    # TODO(Rohan) not all commands will require version info on completion,
     # consider making this optional.
-    # TODO: we should endeavor to return something clean even if we can't
+    # TODO(Rohan) we should endeavor to return something clean even if we can't
     # talk to RADOS enough to get version info
     versions = cluster_status(cluster_handle, cluster_name)['versions']
 
@@ -313,14 +329,18 @@ def rados_commands(fsid, cluster_name, commands):
 
 
 def ceph_command(cluster_name, command_args):
-    """
-    Run a Ceph CLI operation directly.  This is a fallback to allow
+    """Run a Ceph CLI operation directly.  This is a fallback to allow
+
     manual execution of arbitrary commands in case the user wants to
+
     do something that is absent or broken in Calamari proper.
 
     :param cluster_name: Ceph cluster name, or None to run without --cluster
+
     argument
+
     :param command_args: Command line, excluding the leading 'ceph' part.
+
     """
 
     if cluster_name:
@@ -340,13 +360,16 @@ def ceph_command(cluster_name, command_args):
 
 
 def rbd_command(command_args, pool_name=None):
-    """
-    Run a rbd CLI operation directly.  This is a fallback to allow
+    """Run a rbd CLI operation directly.  This is a fallback to allow
+
     manual execution of arbitrary commands in case the user wants to
+
     do something that is absent or broken in Calamari proper.
 
     :param pool_name: Ceph pool name, or None to run without --pool argument
+
     :param command_args: Command line, excluding the leading 'rbd' part.
+
     """
 
     if pool_name:
@@ -366,13 +389,16 @@ def rbd_command(command_args, pool_name=None):
 
 
 def radosgw_admin_command(command_args):
-    """
-    Run a radosgw-admin CLI operation directly.  This is a fallback to allow
+    """Run a radosgw-admin CLI operation directly.  This is a fallback to allow
+
     manual execution of arbitrary commands in case the user wants to
+
     do something that is absent or broken in Calamari proper.
 
     :param command_args: Command line, excluding the leading 'radosgw-admin'
+
     part.
+
     """
 
     args = ["radosgw-admin"] + command_args
@@ -389,11 +415,12 @@ def radosgw_admin_command(command_args):
 
 
 def _get_config(cluster_name):
-    """
-    Given that a mon is running on this server, query its admin socket to get
+    """Given that a mon is running on this server, query its admin socket to get
+
     the configuration dict.
 
     :return JSON-encoded config object
+
     """
 
     try:
@@ -409,12 +436,12 @@ def _get_config(cluster_name):
 
 
 def get_cluster_object(cluster_name, sync_type, since):
-    # TODO: for the synced objects that support it, support
+    # TODO(Rohan) for the synced objects that support it, support
     # fetching older-than-present versions to allow the master
     # to backfill its history.
 
-    import rados
     from ceph_argparse import json_command
+    import rados
 
     # Check you're asking me for something I know how to give you
     assert sync_type in SYNC_TYPES
@@ -526,30 +553,36 @@ def get_cluster_object(cluster_name, sync_type, since):
 
 
 def get_boot_time():
-    """
-    Retrieve the 'btime' line from /proc/stat
+    """Retrieve the 'btime' line from /proc/stat
 
     :return integer, seconds since epoch at which system booted
+
     """
     data = open('/proc/stat').read()
     return int(re.search('^btime (\d+)$', data, re.MULTILINE).group(1))
 
 
 def get_heartbeats():
-    """
-    The goal here is *not* to give a helpful summary of
+    """The goal here is *not* to give a helpful summary of
+
     the cluster status, rather it is to give the minimum
+
     amount if information to let an informed master decide
+
     whether it needs to ask us for any additional information,
+
     such as updated copies of the cluster maps.
 
     Enumerate Ceph services running locally, for each report
+
     its FSID, type and ID.
 
     If a mon is running here, do some extra work:
 
     - Report the mapping of cluster name to FSID from
+
       /etc/ceph/<cluster name>.conf
+
     - For all clusters, report the latest versions of all cluster maps.
 
     :return A 2-tuple of dicts for services, clusters
@@ -640,8 +673,8 @@ def get_heartbeats():
 
 
 def service_status(socket_path):
-    """
-    Given an admin socket path, learn all we can about that service
+    """Given an admin socket path, learn all we can about that service
+
     """
     try:
         cluster_name, service_type, service_id = \
@@ -690,9 +723,10 @@ def service_status(socket_path):
 
 
 def cluster_status(cluster_handle, cluster_name):
-    """
-    Get a summary of the status of a ceph cluster, especially
+    """Get a summary of the status of a ceph cluster, especially
+
     the versions of the cluster maps.
+
     """
     # Get map versions from 'status'
     mon_status = rados_command(cluster_handle, "mon_status")
@@ -739,30 +773,30 @@ def cluster_status(cluster_handle, cluster_name):
 
 
 def selftest_wait(period):
-    """
-    For self-test only.  Wait for the specified period and then return None.
+    """For self-test only.  Wait for the specified period and then return None.
+
     """
     time.sleep(period)
 
 
 def selftest_block():
-    """
-    For self-test only.  Run forever
+    """For self-test only.  Run forever
+
     """
     while True:
         time.sleep(1)
 
 
 def selftest_exception():
-    """
-    For self-test only.  Throw an exception
+    """For self-test only.  Throw an exception
+
     """
     raise RuntimeError("This is a self-test exception")
 
 
 def _heartbeat(heartbeat_type, discover, fsid):
-    """
-    Send an event to the master with the terse status
+    """Send an event to the master with the terse status
+
     """
     service_heartbeat, cluster_heartbeat = get_heartbeats()
 
@@ -795,8 +829,8 @@ def _heartbeat(heartbeat_type, discover, fsid):
 def heartbeat(heartbeat_type="service", discover=False, fsid=None):
     try:
         return _heartbeat(heartbeat_type, discover, fsid)
-    except:
-        # TODO (Rohan): Tackle this later
+    except Exception:
+        # TODO(Rohan): Tackle this later
         pass
 
 

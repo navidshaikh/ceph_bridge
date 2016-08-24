@@ -1,13 +1,14 @@
-import logging
-import uuid
 
 from ceph_bridge import ceph
 
-from ceph_bridge.manager import config
 from ceph_bridge.logging import LOG
-from ceph_bridge.types \
-    import OsdMap, PgSummary, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
+from ceph_bridge.types import OsdMap
+from ceph_bridge.types import PgSummary
+from ceph_bridge.types import USER_REQUEST_COMPLETE
+from ceph_bridge.types import USER_REQUEST_SUBMITTED
 from ceph_bridge.util import now
+import logging
+import uuid
 
 
 class PublishError(Exception):
@@ -15,32 +16,50 @@ class PublishError(Exception):
 
 
 class UserRequestBase(object):
-    """
-    A request acts on one or more Ceph-managed objects, i.e.
+    """A request acts on one or more Ceph-managed objects, i.e.
+
     mon, mds, osd, pg.
 
     Amidst the terminology mess of 'jobs', 'commands', 'operations', this class
+
     is named for clarity: it's an operation at an end-user level of
+
     granularity, something that might be a button in the UI.
 
     UserRequests are usually remotely executed on a mon.  However, there
+
     may be a final step of updating the state of ClusterMonitor in order
+
     that subsequent REST API consumer reads return values consistent with
+
     the job having completed, e.g. waiting for the OSD map to be up
+
     to date before calling a pool creation complete.  For this reason,
+
     UserRequests have a local ID and completion state that is independent
+
     of their remote ID (salt jid).  UserRequests may also execute more than
+
     one JID in the course of their lifetime.
 
     Requests have the following lifecycle:
+
      NEW object is created, it has all the information needed to do its job
+
          other than where it should execute.
+
      SUBMITTED the request has started executing,
+
      usually this will have involved sending
+
                out a salt job, so .jid is often set but not always.
+
      COMPLETE no further action, this instance
+
      will remain constant from this point on.
+
               this does not indicate anything about success or failure.
+
     """
 
     NEW = 'new'
@@ -49,14 +68,17 @@ class UserRequestBase(object):
     states = [NEW, SUBMITTED, COMPLETE]
 
     def __init__(self, fsid, cluster_name):
-        """
-        Requiring cluster_name and fsid is redundant (ideally everything would
+        """Requiring cluster_name and fsid is redundant (ideally everything would
+
         speak in terms of fsid) but convenient, because the librados interface
+
         wants a cluster name when you create a client, and otherwise we would
+
         have to look up via ceph.conf.
+
         """
         # getChild isn't in 2.6
-        logname = '.'.join((log.name, self.__class__.__name__))
+        logname = '.'.join((LOG.name, self.__class__.__name__))
         self.log = logging.getLogger(logname)
         self.requested_at = now()
         self.completed_at = None
@@ -89,27 +111,32 @@ class UserRequestBase(object):
 
     @property
     def associations(self):
-        """
-        A dictionary of Event-compatible assocations
+        """A dictionary of Event-compatible assocations
+
         for this request, indicating which cluster/server/services
+
         we are affecting.
+
         """
         return {}
 
     @property
     def headline(self):
-        """
-        Single line describing what the request is trying to accomplish.
+        """Single line describing what the request is trying to accomplish.
+
         """
         raise NotImplementedError()
 
     @property
     def status(self):
-        """
-        Single line describing which phase of the request is currently
+        """Single line describing which phase of the request is currently
+
         happening, useful to distinguish what's going on for long
+
         running operations.  For simple quick operations no need to return
+
         anything here as the headline tells all.
+
         """
         if self.state != self.COMPLETE:
             return "Running"
@@ -120,18 +147,20 @@ class UserRequestBase(object):
 
     @property
     def awaiting_versions(self):
-        """
-        Requests indicate that they are waiting for particular
+        """Requests indicate that they are waiting for particular
+
         sync objects, optionally specifying the particular version
+
         they are waiting for (otherwise set version to None).
 
         :return dict of SyncObject subclass to (version or None)
+
         """
         return {}
 
     def submit(self):
-        """
-        Start remote execution phase by publishing a job to salt.
+        """Start remote execution phase by publishing a job to salt.
+
         """
         assert self.state == self.NEW
         self._submit()
@@ -142,11 +171,12 @@ class UserRequestBase(object):
         raise NotImplementedError()
 
     def complete_jid(self, result):
-        """
-        Call this when remote execution is done.
+        """Call this when remote execution is done.
 
         Implementations must always update .jid appropriately
+
         here: either to the jid of a new job, or to None.
+
         """
         self.result = result
         self.log.info("Request %s JID %s completed with result=%s" %
@@ -159,8 +189,8 @@ class UserRequestBase(object):
         self.complete()
 
     def complete(self):
-        """
-        Call this when you're all done
+        """Call this when you're all done
+
         """
         assert self.state != self.COMPLETE
         assert self.jid is None
@@ -171,9 +201,10 @@ class UserRequestBase(object):
         self.completed_at = now()
 
     def on_map(self, sync_type, sync_object):
-        """
-        It is only valid to call this for sync_types which are
+        """It is only valid to call this for sync_types which are
+
         currently in awaiting_versions
+
         """
         pass
 
@@ -191,8 +222,8 @@ class UserRequest(UserRequestBase):
 
 
 class RadosRequest(UserRequest):
-    """
-    A user request whose remote operations consist of librados mon commands
+    """A user request whose remote operations consist of librados mon commands
+
     """
 
     def __init__(self, headline, fsid, cluster_name, commands):
@@ -209,9 +240,10 @@ class RadosRequest(UserRequest):
 
 
 class OsdMapModifyingRequest(RadosRequest):
-    """
-    Specialization of UserRequest which waits for Calamari's copy of
+    """Specialization of UserRequest which waits for Calamari's copy of
+
     the OsdMap sync object to catch up after execution of RADOS commands.
+
     """
 
     def __init__(self, headline, fsid, cluster_name, commands):
@@ -263,9 +295,10 @@ class OsdMapModifyingRequest(RadosRequest):
 
 
 class PoolCreatingRequest(OsdMapModifyingRequest):
-    """
-    Like an OsdMapModifyingRequest, but additionally wait for all PGs
+    """Like an OsdMapModifyingRequest, but additionally wait for all PGs
+
     in the resulting pool to leave state 'creating' before completing.
+
     """
 
     def __init__(self, headline, fsid, cluster_name, pool_name, commands):
@@ -312,7 +345,7 @@ class PoolCreatingRequest(OsdMapModifyingRequest):
                         break
 
                 if self._pool_id is None:
-                    log.error("'{0}' not found, pools are {1}".format(
+                    LOG.error("'{0}' not found, pools are {1}".format(
                         self._pool_name, [
                             p['pool_name']
                             for p in osd_map.pools_by_id.values()]
@@ -329,9 +362,10 @@ class PoolCreatingRequest(OsdMapModifyingRequest):
 
 
 class PgProgress(object):
-    """
-    Encapsulate the state that PgCreatingRequest uses for splitting up
+    """Encapsulate the state that PgCreatingRequest uses for splitting up
+
     creation operations into blocks.
+
     """
 
     def __init__(self, initial, final, block_size):
@@ -360,13 +394,13 @@ class PgProgress(object):
             currently_creating_min = max(
                 self._intermediate_goal - self._block_size, self.initial)
             currently_creating_max = self._intermediate_goal
-            return "Waiting for PG creation (%s/%s),"
-        " currently creating PGs %s-%s" % (
-            created,
-            total_creating,
-            currently_creating_min,
-            currently_creating_max
-        )
+            return "Waiting for PG creation (%s/%s), "\
+                "currently creating PGs %s-%s" % (
+                    created,
+                    total_creating,
+                    currently_creating_min,
+                    currently_creating_max
+                )
         else:
             return "Waiting for PG creation (%s/%s)" % (
                 created,
@@ -374,20 +408,20 @@ class PgProgress(object):
             )
 
     def expected_count(self):
-        """
-        After a successful 'osd pool set' operation, what should pg_num be?
+        """After a successful 'osd pool set' operation, what should pg_num be?
+
         """
         return self._intermediate_goal
 
     def is_final_block(self):
-        """
-        Is the current expansion under way the final one?
+        """Is the current expansion under way the final one?
+
         """
         return self._intermediate_goal == self.final
 
     def is_complete(self):
-        """
-        Have all expected PGs been created?
+        """Have all expected PGs been created?
+
         """
         return self._still_to_create == 0
 
@@ -397,14 +431,18 @@ class PgProgress(object):
 
 
 class PgCreatingRequest(OsdMapModifyingRequest):
-    """
-    Specialization of OsdMapModifyingRequest to issue a request
+    """Specialization of OsdMapModifyingRequest to issue a request
+
     to issue a second set of commands after PGs created by an
+
     initial set of commands have left the 'creating' state.
 
     This handles issuing multiple smaller "osd pool set pg_num" calls when
+
     the number of new PGs requested is greater than mon_osd_max_split_count,
+
     caller is responsible for telling us how many we may create at once.
+
     """
 
     # Simple state machine for phases:
@@ -418,14 +456,20 @@ class PgCreatingRequest(OsdMapModifyingRequest):
     def __init__(self, headline, fsid, cluster_name, commands,
                  pool_id, pool_name, pgp_num,
                  initial_pg_count, final_pg_count, block_size):
-        """
-        :param commands: Commands to execute before creating PGs
+        """:param commands: Commands to execute before creating PGs
+
         :param initial_pg_count: How many PGs the pool has before
+
         we change anything
+
         :param final_pg_count: How many PGs the pool should have
+
         when we are done
+
         :param block_size: How many PGs we may create in one
+
         "osd pool set" command
+
         """
 
         self._await_osd_version = None

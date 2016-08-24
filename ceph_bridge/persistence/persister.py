@@ -1,32 +1,24 @@
-from etcdobj import Server as etcd_server
-
-from collections import namedtuple
-import logging
 import datetime
-
+from etcdobj import Server as etcd_server
+import gevent.event
 import gevent.greenlet
 import gevent.queue
-import gevent.event
 
 try:
     import msgpack
 except ImportError:
     msgpack = None
 
-from tendrl.ceph_bridge.manager import config
-
-from tendrl.ceph_bridge.persistence.sync_objects import SyncObject
-from tendrl.ceph_bridge.persistence.servers import Server, Service
-
-from tendrl.ceph_bridge.util import now
 from tendrl.ceph_bridge.log import log
+from tendrl.ceph_bridge.manager import config
+from tendrl.ceph_bridge.persistence.sync_objects import SyncObject
 
 
 CLUSTER_MAP_RETENTION = datetime.timedelta(
     seconds=int(config.get('bridge', 'cluster_map_retention')))
 
 
-class deferred_call():
+class deferred_call(object):
 
     def __init__(self, fn, args, kwargs):
         self.fn = fn
@@ -38,10 +30,12 @@ class deferred_call():
 
 
 class Persister(gevent.greenlet.Greenlet):
-    """
-    Asynchronously persist a queue of updates.  This is for use by classes
+    """Asynchronously persist a queue of updates.  This is for use by classes
+
     that maintain the primary copy of state in memory, but also lazily update
+
     the DB so that they can recover from it on restart.
+
     """
 
     def __init__(self):
@@ -53,8 +47,8 @@ class Persister(gevent.greenlet.Greenlet):
         self._store = self.get_store()
 
     def __getattribute__(self, item):
-        """
-        Wrap functions with logging
+        """Wrap functions with logging
+
         """
         if item.startswith('_'):
             return object.__getattribute__(self, item)

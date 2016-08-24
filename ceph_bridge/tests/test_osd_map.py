@@ -1,7 +1,7 @@
-from unittest.case import TestCase as UnitTestCase
-from ceph_bridge.types import OsdMap
 from ceph_bridge.tests.util import load_fixture
+from ceph_bridge.types import OsdMap
 from mock import MagicMock
+from unittest.case import TestCase as UnitTestCase
 
 
 # An OSD map with some non-default CRUSH rules in it
@@ -9,14 +9,15 @@ INTERESTING_OSD_MAP = load_fixture('interesting_osd_map.json')
 
 
 class TestOsdMap(UnitTestCase):
-    """
-    Tests for the processing that we do on the OSD map to expose
+    """Tests for the processing that we do on the OSD map to expose
+
     higher level views.
+
     """
 
     def test_crush_osds(self):
-        """
-        That the correct OSDs are recognised as part of a CRUSH rule
+        """That the correct OSDs are recognised as part of a CRUSH rule
+
         """
         osd_map = OsdMap(None, INTERESTING_OSD_MAP)
 
@@ -45,8 +46,8 @@ class TestOsdMap(UnitTestCase):
         })
 
     def test_7883(self):
-        """
-        Bug in which pools were not found for OSDs
+        """Bug in which pools were not found for OSDs
+
         """
         osd_map = OsdMap(None, load_fixture("osd_map-7883.json"))
         all_osds = osd_map.osds_by_id.keys()

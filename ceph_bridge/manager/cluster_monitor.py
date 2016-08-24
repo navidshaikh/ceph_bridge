@@ -1,27 +1,30 @@
 
-import time
 import datetime
-
-from pytz import utc
-import gevent.greenlet
 import gevent.event
-
+import gevent.greenlet
+from pytz import utc
 from tendrl.ceph_bridge.common import ceph
-
-from tendrl.ceph_bridge.gevent_util import nosleep, nosleep_mgr
+from tendrl.ceph_bridge.common.types import CRUSH_MAP
+from tendrl.ceph_bridge.common.types import CRUSH_NODE
+from tendrl.ceph_bridge.common.types import MdsMap
+from tendrl.ceph_bridge.common.types import MonMap
+from tendrl.ceph_bridge.common.types import OSD
+from tendrl.ceph_bridge.common.types import OsdMap
+from tendrl.ceph_bridge.common.types import POOL
+from tendrl.ceph_bridge.common.types import SYNC_OBJECT_STR_TYPE
+from tendrl.ceph_bridge.common.types import SYNC_OBJECT_TYPES
+from tendrl.ceph_bridge.gevent_util import nosleep
+from tendrl.ceph_bridge.gevent_util import nosleep_mgr
 from tendrl.ceph_bridge.log import log
+from tendrl.ceph_bridge.manager import config
 from tendrl.ceph_bridge.manager.crush_node_request_factory \
     import CrushNodeRequestFactory
 from tendrl.ceph_bridge.manager.crush_request_factory \
     import CrushRequestFactory
 from tendrl.ceph_bridge.manager.osd_request_factory import OsdRequestFactory
 from tendrl.ceph_bridge.manager.pool_request_factory import PoolRequestFactory
-from tendrl.ceph_bridge.common.types \
-    import CRUSH_NODE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, \
-    SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
-from tendrl.ceph_bridge.manager import config
 from tendrl.ceph_bridge.util import now
-
+import time
 
 FAVORITE_TIMEOUT_FACTOR = int(config.get('bridge', 'favorite_timeout_factor'))
 
@@ -31,12 +34,14 @@ class ClusterUnavailable(Exception):
 
 
 class SyncObjects(object):
-    """
-    A collection of versioned objects, keyed by their class (which
+    """A collection of versioned objects, keyed by their class (which
+
     must be a SyncObject subclass).
 
     The objects are immutable, so it is safe to hand out references: new
+
     versions are new objects.
+
     """
 
     # Note that this *isn't* an enforced timeout on fetches, rather it is
@@ -69,10 +74,10 @@ class SyncObjects(object):
         return self._objects[typ]
 
     def on_version(self, sync_type, new_version):
-        """
-        Notify me that a particular version of a particular map exists.
+        """Notify me that a particular version of a particular map exists.
 
         I may choose to initiate RPC to retrieve the map
+
         """
         log.debug(
             "SyncObjects.on_version %s/%s" % (sync_type.str, new_version)
@@ -119,13 +124,13 @@ class SyncObjects(object):
         log.debug("SyncObjects.fetch: %s" % sync_type)
 
         self._fetching_at[sync_type] = now()
-        # TODO clean up unused 'since' argument
+        # TODO(Rohan) clean up unused 'since' argument
         return ceph.get_cluster_object(self._cluster_name,
                                        sync_type.str, None)
 
     def on_fetch_complete(self, sync_type, version, data):
-        """
-        :return A SyncObject if this version was new to us, else None
+        """:return A SyncObject if this version was new to us, else None
+
         """
         log.debug(
             "SyncObjects.on_fetch_complete %s/%s" % (
@@ -157,16 +162,20 @@ class SyncObjects(object):
 
 
 class ClusterMonitor(gevent.greenlet.Greenlet):
-    """
-    Remote management of a Ceph cluster.
+    """Remote management of a Ceph cluster.
 
     Consumes cluster map logs from the mon cluster, maintains
+
     a record of which user requests are ongoing, and uses this
+
     combined knowledge to mediate user requests to change the state of the
+
     system.
 
     This class spawns two threads, one to listen to salt events and
+
     another to listen to user requests.
+
     """
 
     def __init__(self, fsid, cluster_name, persister, servers, eventer):
@@ -200,8 +209,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         self._ready = gevent.event.Event()
 
     def ready(self):
-        """
-        Block until the ClusterMonitor is ready to receive salt events
+        """Block until the ClusterMonitor is ready to receive salt events
+
         """
         self._ready.wait()
 
@@ -211,17 +220,19 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
     @nosleep
     def get_sync_object_data(self, object_type):
-        """
-        :param object_type: A SyncObject subclass
+        """:param object_type: A SyncObject subclass
+
         :returns: a json-serializable object
+
         """
         return self._sync_objects.get_data(object_type)
 
     @nosleep
     def get_sync_object(self, object_type):
-        """
-        :param object_type: A SyncObject subclass
+        """:param object_type: A SyncObject subclass
+
         :returns: a SyncObject instance
+
         """
         return self._sync_objects.get(object_type)
 
@@ -249,7 +260,7 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                     else:
                         # This does not concern us, ignore it
                         pass
-                except:
+                except Exception:
                     # Because this is our main event handling loop, swallow
                     # exceptions instead of letting them end the world.
                     log.exception(
@@ -266,13 +277,16 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
     @nosleep
     def on_heartbeat(self, fqdn, cluster_data):
-        """
-        Handle a ceph.heartbeat from a minion.
+        """Handle a ceph.heartbeat from a minion.
 
         Heartbeats come from all servers, but we're mostly interested in those
+
         which come from a mon (and therefore have the 'clusters' attribute
+
         populated) as these tells us whether there are any new versions of
+
         cluster maps for us to fetch.
+
         """
 
         self.update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
@@ -335,8 +349,8 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             )
 
     def _request(self, method, obj_type, *args, **kwargs):
-        """
-        Create and submit UserRequest for an apply, create, update or delete.
+        """Create and submit UserRequest for an apply, create, update or delete.
+
         """
 
         # nosleep during preparation phase (may touch

@@ -1,39 +1,28 @@
 import argparse
-import json
-import logging
-import os
 import gc
-import re
-import time
+import gevent.event
+import gevent.greenlet
+import greenlet
+import logging
 import signal
-import traceback
-import resource
 import sys
 
-import gevent.event
-import gevent.socket as socket
-import greenlet
-from dateutil.tz import tzutc
-import gevent.greenlet
+from tendrl.ceph_bridge.common import ceph
+import tendrl.ceph_bridge.log
+from tendrl.ceph_bridge.log import log
+from tendrl.ceph_bridge.manager.cluster_monitor import ClusterMonitor
+from tendrl.ceph_bridge.manager.eventer import Eventer
+from tendrl.ceph_bridge.manager.rpc import EtcdThread
+from tendrl.ceph_bridge.manager.server_monitor import ServerMonitor
+from tendrl.ceph_bridge.persistence.persister import Persister
+
+import traceback
+
 
 try:
     import msgpack
 except ImportError:
     msgpack = None
-
-from tendrl.ceph_bridge.common import ceph
-
-from tendrl.ceph_bridge.log import log
-import tendrl.ceph_bridge.log
-from tendrl.ceph_bridge.util import Ticker
-from tendrl.ceph_bridge.manager.cluster_monitor import ClusterMonitor
-from tendrl.ceph_bridge.manager.eventer import Eventer
-from tendrl.ceph_bridge.manager.rpc import EtcdThread
-from tendrl.ceph_bridge.manager.server_monitor import ServerMonitor
-
-
-from tendrl.ceph_bridge.persistence.persister import Persister
-
 
 # Manhole module optional for debugging.
 try:
@@ -78,7 +67,7 @@ class TopLevelEvents(gevent.greenlet.Greenlet):
                             # This does not concern us, ignore it
                             log.debug("TopLevelEvents: ignoring %s" % tag)
                             pass
-                    except:
+                    except Exception:
                         log.exception(
                             "Exception handling message tag=%s" % tag)
             gevent.sleep(3)
@@ -87,11 +76,12 @@ class TopLevelEvents(gevent.greenlet.Greenlet):
 
 
 class Manager(object):
-    """
-    Manage a collection of ClusterMonitors.
+    """Manage a collection of ClusterMonitors.
 
     Subscribe to ceph/cluster events, and create a ClusterMonitor
+
     for any FSID we haven't seen before.
+
     """
 
     def __init__(self):
@@ -112,9 +102,10 @@ class Manager(object):
         self.servers = ServerMonitor(self.persister, self.eventer)
 
     def delete_cluster(self, fs_id):
-        """
-        Note that the cluster will pop right back again if it's
+        """Note that the cluster will pop right back again if it's
+
         still sending heartbeats.
+
         """
         victim = self.clusters[fs_id]
         victim.stop()
@@ -178,8 +169,8 @@ class Manager(object):
 
 
 def dump_stacks():
-    """
-    This is for use in debugging, especially using manhole
+    """This is for use in debugging, especially using manhole
+
     """
     for ob in gc.get_objects():
         if not isinstance(ob, greenlet.greenlet):

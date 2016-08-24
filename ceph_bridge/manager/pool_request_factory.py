@@ -1,8 +1,10 @@
+from tendrl.ceph_bridge.common.types import Config
+from tendrl.ceph_bridge.common.types import OsdMap
 from tendrl.ceph_bridge.log import log
 from tendrl.ceph_bridge.manager.request_factory import RequestFactory
-from tendrl.ceph_bridge.common.types import OsdMap, Config
-from tendrl.ceph_bridge.manager.user_request \
-    import OsdMapModifyingRequest, PgCreatingRequest, PoolCreatingRequest
+from tendrl.ceph_bridge.manager.user_request import OsdMapModifyingRequest
+from tendrl.ceph_bridge.manager.user_request import PgCreatingRequest
+from tendrl.ceph_bridge.manager.user_request import PoolCreatingRequest
 
 # Valid values for the 'var' argument to 'ceph osd pool set'
 POOL_PROPERTIES = ["size", "min_size", "crash_replay_interval",
@@ -64,12 +66,13 @@ class PoolRequestFactory(RequestFactory):
         # Resolve pool ID to name
         pool_name = self._resolve_pool(pool_id)['pool_name']
 
-        # TODO: perhaps the REST API should have something in the body to
+        # TODO(Rohan) perhaps the REST API should have something in the body to
         # make it slightly harder to accidentally delete a pool, to respect
         # the severity of this operation since we're hiding the
         # --yes-i-really-really-want-to
         # stuff here
-        # TODO: handle errors in a way that caller can show to a user, e.g.
+        # TODO(Rohan) handle errors in a way that caller can show to a user,
+        # e.g.
         # if the name is wrong we should be sending a structured errors dict
         # that they can use to associate the complaint with the 'name' field.
         commands = [
@@ -86,12 +89,14 @@ class PoolRequestFactory(RequestFactory):
         )
 
     def _pool_min_size(self, req_size, req_min_size):
-        '''
-        Find an appropriate "min_size" parameter for a pool create operation
+        '''Find an appropriate "min_size" parameter for a pool create operation
+
         req_size is requested pool size; 0 means "use osd_pool_default_size"
+
         req_min_size is requested min size
 
         Used in both create and update
+
         '''
         ceph_config = self._cluster_monitor.get_sync_object_data(Config)
         size = req_size or int(ceph_config.get('osd_pool_default_size'), 0)
@@ -160,7 +165,7 @@ class PoolRequestFactory(RequestFactory):
             if not commands:
                 raise NotImplementedError(attributes)
 
-            # TODO: provide some machine-readable indication of which
+            # TODO(Rohan) provide some machine-readable indication of which
             # objects are affected by a particular request.
             # Perhaps subclass Request for each type of object, and have
             # that subclass provide both the patches->commands mapping and

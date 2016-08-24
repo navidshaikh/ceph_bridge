@@ -1,17 +1,19 @@
 from ceph_bridge.manager.request_factory import RequestFactory
-from ceph_bridge.manager.user_request import OsdMapModifyingRequest
 from ceph_bridge.manager.server_monitor import ServiceId
-from ceph_bridge.types import OSD, OsdMap, BucketNotEmptyError
-import logging
+from ceph_bridge.manager.user_request import OsdMapModifyingRequest
+from ceph_bridge.types import BucketNotEmptyError
+from ceph_bridge.types import OSD
+from ceph_bridge.types import OsdMap
 import json
+import logging
 
 
 log = logging.getLogger('tendrl.ceph_bridge.crush_node_factory')
 
 
 class CrushNodeRequestFactory(RequestFactory):
-    """
-    Map REST API verbs onto CLI reality
+    """Map REST API verbs onto CLI reality
+
     """
 
     def __init__(self, monitor):
@@ -23,7 +25,7 @@ class CrushNodeRequestFactory(RequestFactory):
         self.fsid = self._cluster_monitor.fsid
 
     def update(self, node_id, attributes):
-        # TODO report Not Modified http://tracker.ceph.com/issues/9764
+        # TODO(Rohan) report Not Modified http://tracker.ceph.com/issues/9764
         current_node = self.osd_map.get_tree_node(node_id)
         parent = self.osd_map.parent_bucket_by_node_id.get(node_id, None)
         name, bucket_type, items = [
@@ -31,7 +33,7 @@ class CrushNodeRequestFactory(RequestFactory):
         ]
         commands = []
 
-        # TODO change to use rename-bucket when #9526 lands in ceph 0.89
+        # TODO(Rohan) change to use rename-bucket when #9526 lands in ceph 0.89
         if name != current_node[
                 'name'] or bucket_type != current_node['type_name']:
             commands.append(add_bucket(name, bucket_type))
@@ -103,7 +105,7 @@ class CrushNodeRequestFactory(RequestFactory):
 
     def _add_items(self, name, bucket_type, items):
         commands = []
-        # TODO what about subtrees containing OSDs
+        # TODO(Rohan) what about subtrees containing OSDs
         for item in items:
             id = item['id']
             if id < 0:  # bucket case
@@ -163,7 +165,7 @@ def move_osd(hostname, osd_id, parent_name, parent_type):
           'weight': 0.0,
           }
          ),
-        # TODO do something about not modified, we don't want to store
+        # TODO(Rohan) do something about not modified, we don't want to store
         # obvious stuff in teh keystore for hostname in the cache what
         # we need to do here is work out what the parent is (host)?
         # and then figure out it's hostname, we know these things in

@@ -1,7 +1,7 @@
-from collections import namedtuple, defaultdict
-from ceph_bridge.util import memoize
 from ceph_bridge.logging import LOG
-
+from ceph_bridge.util import memoize
+from collections import defaultdict
+from collections import namedtuple
 
 CRUSH_RULE_TYPE_REPLICATED = 1
 CRUSH_RULE_TYPE_ERASURE = 3
@@ -60,13 +60,14 @@ USER_REQUEST_SCHEMA = """{
 
 
 class SyncObject(object):
-    """
-    An object from a Ceph cluster that we are maintaining
+    """An object from a Ceph cluster that we are maintaining
+
     a copy of on the Calamari server.
 
     We wrap these JSON-serializable objects in a python object to:
 
     - Decorate them with things like id-to-entry dicts
+
     - Have a generic way of seeing the version of an object
 
     """
@@ -76,10 +77,12 @@ class SyncObject(object):
 
     @classmethod
     def cmp(cls, a, b):
-        """
-        Slight bastardization of cmp.  Takes two versions,
+        """Slight bastardization of cmp.  Takes two versions,
+
         and returns a cmp-like value, except that if versions
+
         are not sortable we only return 0 or 1.
+
         """
         # Version is something unique per version (like a hash)
         return 1 if a != b else 0
@@ -150,9 +153,10 @@ class OsdMap(VersionedSyncObject):
     @property
     @memoize
     def parent_bucket_by_node_id(self):
-        """
-        Builds a dict of node_id -> parent_node for all nodes
+        """Builds a dict of node_id -> parent_node for all nodes
+
         with parents in the crush map
+
         """
         parent_map = defaultdict(list)
         if self.data is not None:
@@ -260,10 +264,10 @@ class OsdMap(VersionedSyncObject):
     @property
     @memoize
     def osds_by_pool(self):
-        """
-        Get the OSDS which may be used in this pool
+        """Get the OSDS which may be used in this pool
 
         :return dict of pool ID to OSD IDs in the pool
+
         """
 
         result = {}
@@ -291,8 +295,8 @@ class OsdMap(VersionedSyncObject):
     @property
     @memoize
     def osd_pools(self):
-        """
-        A dict of OSD ID to list of pool IDs
+        """A dict of OSD ID to list of pool IDs
+
         """
         osds = dict([(osd_id, []) for osd_id in self.osds_by_id.keys()])
         for pool_id in self.pools_by_id.keys():
@@ -329,8 +333,8 @@ class MonStatus(VersionedSyncObject):
 
 
 class PgSummary(SyncObject):
-    """
-    A summary of the state of PGs in the cluster, reported by pool and by OSD.
+    """A summary of the state of PGs in the cluster, reported by pool and by OSD.
+
     """
     str = 'pg_summary'
 

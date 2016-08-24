@@ -1,18 +1,26 @@
 from collections import defaultdict
-import datetime
-import uuid
-
 import gevent.event
 import gevent.greenlet
 
+from tendrl.ceph_bridge.common.db.event import ERROR
+from tendrl.ceph_bridge.common.db.event import Event
+from tendrl.ceph_bridge.common.db.event import INFO
+from tendrl.ceph_bridge.common.db.event import RECOVERY
+from tendrl.ceph_bridge.common.db.event import severity_str
+from tendrl.ceph_bridge.common.db.event import WARNING
+from tendrl.ceph_bridge.common.types import Health
+from tendrl.ceph_bridge.common.types import MDS
+from tendrl.ceph_bridge.common.types import MON
+from tendrl.ceph_bridge.common.types import MonStatus
+from tendrl.ceph_bridge.common.types import OSD
+from tendrl.ceph_bridge.common.types import OsdMap
+from tendrl.ceph_bridge.common.types import ServiceId
 from tendrl.ceph_bridge.gevent_util import nosleep
 from tendrl.ceph_bridge.log import log
-from tendrl.ceph_bridge.common.types \
-    import OsdMap, Health, MonStatus, ServiceId, MON, OSD, MDS
 from tendrl.ceph_bridge.manager import config
-from tendrl.ceph_bridge.common.db.event \
-    import Event, ERROR, WARNING, RECOVERY, INFO, severity_str
 from tendrl.ceph_bridge.util import now
+
+import uuid
 
 
 # The tick handler is very cheap (no I/O) so we call
@@ -33,10 +41,12 @@ CLUSTER_CONTACT_THRESHOLD = int(config.get(
 
 
 class Eventer(gevent.greenlet.Greenlet):
-    """
-    I listen to changes from ClusterMonitor and ServerMonitor, and feed
+    """I listen to changes from ClusterMonitor and ServerMonitor, and feed
+
     events into the event log.  I also periodically check some time-based
+
     conditions in my on_tick method.
+
     """
 
     def __init__(self, manager):
@@ -66,11 +76,14 @@ class Eventer(gevent.greenlet.Greenlet):
         log.debug("Eventer complete")
 
     def _emit(self, severity, message, **associations):
-        """
-        :param severity: One of the defined serverity values
+        """:param severity: One of the defined serverity values
+
         :param message: One line human readable string
+
         :param associations: Optional extra attributes to associate
+
                              the event with a particular cluster/server/service
+
         """
         now_utc = now()
         log.info("Eventer._emit: %s/%s/%s" %
@@ -104,13 +117,13 @@ class Eventer(gevent.greenlet.Greenlet):
             self._manager.persister.save_events(self._events)
             self._events = []
 
-    # TODO consume messages about ServiceState from ServerMonitor, so that
-    # we can tell people about their services in the absence of up to date
-    # cluster map information.
+    # TODO(Rohan) consume messages about ServiceState from ServerMonitor,
+    # so that we can tell people about their services in the absence of
+    # up to date cluster map information.
 
     def _humanize_service(self, service_count, service_type):
-        """
-        String helper for printing strings like "1 OSD", "2 MDSs"
+        """String helper for printing strings like "1 OSD", "2 MDSs"
+
         """
         human_singular = {
             MON: 'monitor service',
@@ -136,8 +149,8 @@ class Eventer(gevent.greenlet.Greenlet):
 
     @nosleep
     def on_server(self, server_state):
-        """
-        Tell me that a new (managed) server has appeared in our world.
+        """Tell me that a new (managed) server has appeared in our world.
+
         """
         msg = "Added server %s" % server_state.fqdn
         counts_by_type = defaultdict(int)
@@ -154,12 +167,14 @@ class Eventer(gevent.greenlet.Greenlet):
 
     @nosleep
     def on_reboot(self, server_state, expected):
-        """
-        Tell me that a server rebooted.
+        """Tell me that a server rebooted.
 
         :param expected: True if the server was in a rebooting
+
         state already (i.e. we told it to reboot).
+
         False indicates spontaneity)
+
         """
         severity = INFO if expected else WARNING
         self._emit(severity,
@@ -169,8 +184,8 @@ class Eventer(gevent.greenlet.Greenlet):
 
     @nosleep
     def on_new_version(self, server_state):
-        """
-        Tell me that the version of ceph changed
+        """Tell me that the version of ceph changed
+
         """
         if server_state.ceph_version is not None:
             msg = "Ceph {version} installed on {fqdn}".format(
@@ -184,9 +199,10 @@ class Eventer(gevent.greenlet.Greenlet):
 
     @nosleep
     def on_tick(self):
-        """
-        Periodically call this to drive non-event-driven events (i.e. things
+        """Periodically call this to drive non-event-driven events (i.e. things
+
         which are based on walltime checks)
+
         """
         log.debug("Eventer.on_tick")
 
@@ -252,8 +268,8 @@ class Eventer(gevent.greenlet.Greenlet):
 #        self._flush()
 
     def _get_fqdn(self, fsid, service_type, service_id):
-        """
-        Resolve a service to a FQDN if possible, else return None
+        """Resolve a service to a FQDN if possible, else return None
+
         """
         server = self._manager.servers.get_by_service(
             ServiceId(fsid, service_type, str(service_id)))
@@ -263,9 +279,10 @@ class Eventer(gevent.greenlet.Greenlet):
         return server.fqdn if server else None
 
     def _get_on_server(self, fsid, service_type, service_id):
-        """
-        Get a string for appending to service messages to indicate
+        """Get a string for appending to service messages to indicate
+
         which server they're on, or "" if none.
+
         """
         fqdn = self._get_fqdn(fsid, service_type, service_id)
         if fqdn:
@@ -320,13 +337,13 @@ class Eventer(gevent.greenlet.Greenlet):
                         "OSD {name}.{id} went down{on_server}", osd_id
                     )
 
-                    # TODO: aggregate OSD notifications by server so that
+                    # TODO(Rohan) aggregate OSD notifications by server so that
                     # we can say things like "all the OSDs on server X went
                     # down" or "2/3 OSDs on server X went down"
-                    # TODO: aggregate OSD notifications by cluster
+                    # TODO(Rohan) aggregate OSD notifications by cluster
                     # so that we can say "all OSDs in cluster 'foo' are down"
 
-                    # TODO Generate notifications if all the OSDs on a
+                    # TODO(Rohan) Generate notifications if all the OSDs on a
                     # server are 'down', the downness OSD map is more recent
                     # than the last contact with the server, and we haven't
                     # already reported the server laggy, to indicate that our
@@ -396,15 +413,20 @@ class Eventer(gevent.greenlet.Greenlet):
 
     @nosleep
     def on_sync_object(self, fsid, sync_type, new, old):
-        """
-        Notification that a newer version of a SyncObject is available, or
+        """Notification that a newer version of a SyncObject is available, or
+
         the first version of a SyncObject is available at startup (wherein
+
         old will be a null SyncObject)
 
         :param fsid: The FSID of the cluster to which the object belongs
+
         :param sync_type: A SyncObject subclass
+
         :param new: A SyncObject
+
         :param old: A SyncObject (same type as new)
+
         """
         log.debug("Eventer.on_sync_object: %s" % sync_type.str)
 
@@ -420,7 +442,7 @@ class Eventer(gevent.greenlet.Greenlet):
 
         self._flush()
 
-        # TODO: generate notifications on PG map to indicate anything
+        # TODO(Rohan) generate notifications on PG map to indicate anything
         # particularly interesting like things which are in a bad
         # state and won't be recovering
-        # TODO: generate events from MDS map
+        # TODO(Rohan) generate events from MDS map

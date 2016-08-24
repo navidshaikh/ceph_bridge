@@ -1,8 +1,9 @@
+from tendrl.ceph_bridge.common.types import OSD_FLAGS
+from tendrl.ceph_bridge.common.types import OSD_IMPLEMENTED_COMMANDS
+from tendrl.ceph_bridge.common.types import OsdMap
 from tendrl.ceph_bridge.manager.request_factory import RequestFactory
-from tendrl.ceph_bridge.common.types \
-    import OsdMap, OSD_IMPLEMENTED_COMMANDS, OSD_FLAGS
-from tendrl.ceph_bridge.manager.user_request \
-    import OsdMapModifyingRequest, RadosRequest
+from tendrl.ceph_bridge.manager.user_request import OsdMapModifyingRequest
+from tendrl.ceph_bridge.manager.user_request import RadosRequest
 
 
 class OsdRequestFactory(RequestFactory):
@@ -111,8 +112,8 @@ class OsdRequestFactory(RequestFactory):
             [('osd repair', {'who': str(osd_id)})])
 
     def get_valid_commands(self, osds):
-        """
-        For each OSD in osds list valid commands
+        """For each OSD in osds list valid commands
+
         """
         ret_val = {}
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
