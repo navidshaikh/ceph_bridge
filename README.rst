@@ -15,3 +15,15 @@ Features
 --------
 
 * TODO
+
+Builds
+------
+
+.. image:: https://travis-ci.org/Tendrl/ceph_bridge.svg?branch=master
+    :target: https://travis-ci.org/Tendrl/ceph_bridge
+
+Code Coverage
+-------------
+
+.. image:: https://coveralls.io/repos/github/Tendrl/ceph_bridge/badge.svg?branch=master
+    :target: https://coveralls.io/github/Tendrl/ceph_bridge?branch=master

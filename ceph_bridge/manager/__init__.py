@@ -1,5 +1,4 @@
 
-from tendrl.ceph_bridge.common.config import tendrlConfig
-
+# TODO (rk) use oslo config here
 # A config instance for use from within the manager service
-config = tendrlConfig()
+config = None

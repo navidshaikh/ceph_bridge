@@ -1,7 +1,7 @@
-from tendrl.ceph_bridge.manager.request_factory import RequestFactory
-from tendrl.ceph_bridge.manager.user_request import OsdMapModifyingRequest
-from tendrl.ceph_bridge.manager.server_monitor import ServiceId
-from tendrl.ceph_bridge.common.types import OSD, OsdMap, BucketNotEmptyError
+from ceph_bridge.manager.request_factory import RequestFactory
+from ceph_bridge.manager.user_request import OsdMapModifyingRequest
+from ceph_bridge.manager.server_monitor import ServiceId
+from ceph_bridge.types import OSD, OsdMap, BucketNotEmptyError
 import logging
 import json
 

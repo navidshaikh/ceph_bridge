@@ -1,12 +1,12 @@
 import logging
 import uuid
 
-from tendrl.ceph_bridge.common import ceph
+from ceph_bridge import ceph
 
-from tendrl.ceph_bridge.manager import config
-from tendrl.ceph_bridge.log import log
-from tendrl.ceph_bridge.common.types import OsdMap, PgSummary, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
-from tendrl.ceph_bridge.util import now
+from ceph_bridge.manager import config
+from ceph_bridge.logging import LOG
+from ceph_bridge.types import OsdMap, PgSummary, USER_REQUEST_COMPLETE, USER_REQUEST_SUBMITTED
+from ceph_bridge.util import now
 
 
 class PublishError(Exception):

@@ -1,6 +1,6 @@
 from unittest.case import TestCase as UnitTestCase
-from tendrl.ceph_bridge.common.types import OsdMap
-from tests.util import load_fixture
+from ceph_bridge.types import OsdMap
+from ceph_bridge.tests.util import load_fixture
 from mock import MagicMock
 
 

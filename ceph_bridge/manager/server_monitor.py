@@ -15,16 +15,16 @@ import logging
 from gevent import greenlet
 from gevent import event
 
-from tendrl.ceph_bridge.gevent_util import nosleep
-from tendrl.ceph_bridge.log import log as tendrl_log
-from tendrl.ceph_bridge.manager import config
+from ceph_bridge.gevent_util import nosleep
+from ceph_bridge.logging import LOG as tendrl_log
+from ceph_bridge.manager import config
 
 # The type name for hosts and osds in the CRUSH map (if users have their
 # own crush map they may have changed this), Ceph defaults are 'host' and 'osd'
-from tendrl.ceph_bridge.common import ceph
-from tendrl.ceph_bridge.common.types import OsdMap, MonMap, ServiceId
-from tendrl.ceph_bridge.persistence.servers import Server, Service
-from tendrl.ceph_bridge.util import now
+from ceph_bridge import ceph
+from ceph_bridge.types import OsdMap, MonMap, ServiceId
+from ceph_bridge.persistence.servers import Server, Service
+from ceph_bridge.util import now
 
 CRUSH_HOST_TYPE = config.get('bridge', 'crush_host_type')
 CRUSH_OSD_TYPE = config.get('bridge', 'crush_osd_type')

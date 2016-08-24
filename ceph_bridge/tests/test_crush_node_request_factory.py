@@ -1,8 +1,8 @@
 from unittest import TestCase
 from mock import MagicMock, patch
 
-from cthulhu.manager.crush_node_request_factory import CrushNodeRequestFactory
-from cthulhu.manager.user_request import RadosRequest
+from ceph_bridge.manager.crush_node_request_factory import CrushNodeRequestFactory
+from ceph_bridge.manager.user_request import RadosRequest
 import json
 
 

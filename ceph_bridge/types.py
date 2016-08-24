@@ -1,10 +1,8 @@
 from collections import namedtuple, defaultdict
-from tendrl.ceph_bridge.common.util import memoize
+from ceph_bridge.util import memoize
+from ceph_bridge.logging import LOG
 
-import logging
 
-
-log = logging.getLogger('tendrl.ceph_bridge.types')
 
 
 CRUSH_RULE_TYPE_REPLICATED = 1
@@ -123,7 +121,7 @@ class OsdMap(VersionedSyncObject):
     def _map_osd_metadata(self, metadata):
         osd_id_to_metadata = {}
         if len(metadata) == 0:
-            log.info('No OSD metadata found in OSDMap version:{v} try running "sudo salt \'*\' salt_util.sync_modules"'.format(v=self.version))
+            LOG.info('No OSD metadata found in OSDMap version:{v} try running "sudo salt \'*\' salt_util.sync_modules"'.format(v=self.version))
 
         for m in metadata:
             osd_id_to_metadata[m['osd']] = m
@@ -154,7 +152,7 @@ class OsdMap(VersionedSyncObject):
                     if (child_id, node['id']) not in has_been_mapped:
                         parent_map[child_id].append(node)
                         has_been_mapped.add((child_id, node['id']))
-        log.info('crush node parent map {p} version {v}'.format(p=parent_map, v=self.version))
+        LOG.info('crush node parent map {p} version {v}'.format(p=parent_map, v=self.version))
         return dict(parent_map)
 
     @property
@@ -258,7 +256,7 @@ class OsdMap(VersionedSyncObject):
             if osds is None:
                 # Fallthrough, the pool size didn't fall within any of the rules in its ruleset, Calamari
                 # doesn't understand.  Just report all OSDs instead of failing horribly.
-                log.error("Cannot determine OSDS for pool %s" % pool_id)
+                LOG.error("Cannot determine OSDS for pool %s" % pool_id)
                 osds = self.osds_by_id.keys()
 
             result[pool_id] = osds
@@ -277,7 +275,7 @@ class OsdMap(VersionedSyncObject):
                 try:
                     osds[in_pool_id].append(pool_id)
                 except KeyError:
-                    log.warning("OSD {0} is present in CRUSH map, but not in OSD map")
+                    LOG.warning("OSD {0} is present in CRUSH map, but not in OSD map")
 
         return osds
 
