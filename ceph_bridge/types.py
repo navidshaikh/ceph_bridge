@@ -3,8 +3,6 @@ from ceph_bridge.util import memoize
 from ceph_bridge.logging import LOG
 
 
-
-
 CRUSH_RULE_TYPE_REPLICATED = 1
 CRUSH_RULE_TYPE_ERASURE = 3
 
@@ -60,6 +58,7 @@ USER_REQUEST_SCHEMA = """{
   }
 }"""
 
+
 class SyncObject(object):
     """
     An object from a Ceph cluster that we are maintaining
@@ -101,9 +100,15 @@ class OsdMap(VersionedSyncObject):
         if data is not None:
             self.osds_by_id = dict([(o['osd'], o) for o in data['osds']])
             self.pools_by_id = dict([(p['pool'], p) for p in data['pools']])
-            self.osd_tree_node_by_id = dict([(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0])
-            self.crush_node_by_id = self._filter_crush_nodes(data['crush']['buckets'])
-            self.metadata_by_id = self._map_osd_metadata(data.get('osd_metadata', []))
+            self.osd_tree_node_by_id = dict(
+                [(o['id'], o) for o in data['tree']['nodes'] if o['id'] >= 0]
+            )
+            self.crush_node_by_id = self._filter_crush_nodes(
+                data['crush']['buckets']
+            )
+            self.metadata_by_id = self._map_osd_metadata(
+                data.get('osd_metadata', [])
+            )
 
             # Special case Yuck
             flags = data.get('flags', '').replace('pauserd,pausewr', 'pause')
@@ -121,7 +126,11 @@ class OsdMap(VersionedSyncObject):
     def _map_osd_metadata(self, metadata):
         osd_id_to_metadata = {}
         if len(metadata) == 0:
-            LOG.info('No OSD metadata found in OSDMap version:{v} try running "sudo salt \'*\' salt_util.sync_modules"'.format(v=self.version))
+            LOG.info(
+                'No OSD metadata found in OSDMap version:{v}'
+                ' try running "sudo salt \'*\' '
+                'salt_util.sync_modules"'.format(v=self.version)
+            )
 
         for m in metadata:
             osd_id_to_metadata[m['osd']] = m
@@ -142,7 +151,8 @@ class OsdMap(VersionedSyncObject):
     @memoize
     def parent_bucket_by_node_id(self):
         """
-        Builds a dict of node_id -> parent_node for all nodes with parents in the crush map
+        Builds a dict of node_id -> parent_node for all nodes
+        with parents in the crush map
         """
         parent_map = defaultdict(list)
         if self.data is not None:
@@ -152,7 +162,11 @@ class OsdMap(VersionedSyncObject):
                     if (child_id, node['id']) not in has_been_mapped:
                         parent_map[child_id].append(node)
                         has_been_mapped.add((child_id, node['id']))
-        LOG.info('crush node parent map {p} version {v}'.format(p=parent_map, v=self.version))
+        LOG.info(
+            'crush node parent map {p} version {v}'.format(
+                p=parent_map, v=self.version
+            )
+        )
         return dict(parent_map)
 
     @property
@@ -211,7 +225,11 @@ class OsdMap(VersionedSyncObject):
             elif step['op'] == 'chooseleaf_firstn':
                 # Choose all descendents of the current node of type 'type',
                 # and select all leaves beneath those
-                for desc_node in [nodes_by_id[i] for i in _gather_descendent_ids(root, step['type'])]:
+                for desc_node in [
+                        nodes_by_id[i] for i in _gather_descendent_ids(
+                            root, step['type']
+                        )
+                ]:
                     # Short circuit another iteration to find the emit
                     # and assume anything we've done a chooseleaf on
                     # is going to be part of the selected set of osds
@@ -225,7 +243,9 @@ class OsdMap(VersionedSyncObject):
         osds = set()
         for i, step in enumerate(rule['steps']):
             if step['op'] == 'take':
-                osds |= _gather_osds(nodes_by_id[step['item']], rule['steps'][i + 1:])
+                osds |= _gather_osds(
+                    nodes_by_id[step['item']], rule['steps'][i + 1:]
+                )
         return osds
 
     @property
@@ -249,13 +269,18 @@ class OsdMap(VersionedSyncObject):
         result = {}
         for pool_id, pool in self.pools_by_id.items():
             osds = None
-            for rule in [r for r in self.data['crush']['rules'] if r['ruleset'] == pool['crush_ruleset']]:
+            for rule in [
+                    r for r in self.data[
+                        'crush'
+                    ]['rules'] if r['ruleset'] == pool['crush_ruleset']
+            ]:
                 if rule['min_size'] <= pool['size'] <= rule['max_size']:
                     osds = self.osds_by_rule_id[rule['rule_id']]
 
             if osds is None:
-                # Fallthrough, the pool size didn't fall within any of the rules in its ruleset, Calamari
-                # doesn't understand.  Just report all OSDs instead of failing horribly.
+                # Fallthrough, the pool size didn't fall within any of the
+                # rules in its ruleset, Calamari doesn't understand.
+                # Just report all OSDs instead of failing horribly.
                 LOG.error("Cannot determine OSDS for pool %s" % pool_id)
                 osds = self.osds_by_id.keys()
 
@@ -275,7 +300,9 @@ class OsdMap(VersionedSyncObject):
                 try:
                     osds[in_pool_id].append(pool_id)
                 except KeyError:
-                    LOG.warning("OSD {0} is present in CRUSH map, but not in OSD map")
+                    LOG.warning(
+                        "OSD {0} is present in CRUSH map, but not in OSD map"
+                    )
 
         return osds
 
@@ -294,7 +321,9 @@ class MonStatus(VersionedSyncObject):
     def __init__(self, version, data):
         super(MonStatus, self).__init__(version, data)
         if data is not None:
-            self.mons_by_rank = dict([(m['rank'], m) for m in data['monmap']['mons']])
+            self.mons_by_rank = dict(
+                [(m['rank'], m) for m in data['monmap']['mons']]
+            )
         else:
             self.mons_by_rank = {}
 
@@ -320,7 +349,9 @@ class NotFound(Exception):
         self.object_id = object_id
 
     def __str__(self):
-        return "Object of type %s with id %s not found" % (self.object_type, self.object_id)
+        return "Object of type %s with id %s not found" % (
+            self.object_type, self.object_id
+        )
 
 
 class BucketNotEmptyError(Exception):
@@ -340,7 +371,9 @@ CLUSTER = 'cluster'
 SERVER = 'server'
 
 # The objects that ClusterMonitor keeps copies of from the mon
-SYNC_OBJECT_TYPES = [MdsMap, OsdMap, MonMap, MonStatus, PgSummary, Health, Config]
+SYNC_OBJECT_TYPES = [
+    MdsMap, OsdMap, MonMap, MonStatus, PgSummary, Health, Config
+]
 SYNC_OBJECT_STR_TYPE = dict((t.str, t) for t in SYNC_OBJECT_TYPES)
 
 USER_REQUEST_COMPLETE = 'complete'
@@ -348,4 +381,7 @@ USER_REQUEST_SUBMITTED = 'submitted'
 
 # List of allowable things to send as ceph commands to OSDs
 OSD_IMPLEMENTED_COMMANDS = ('scrub', 'deep_scrub', 'repair')
-OSD_FLAGS = ('pause', 'noup', 'nodown', 'noout', 'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub')
+OSD_FLAGS = (
+    'pause', 'noup', 'nodown', 'noout',
+    'noin', 'nobackfill', 'norecover', 'noscrub', 'nodeep-scrub'
+)

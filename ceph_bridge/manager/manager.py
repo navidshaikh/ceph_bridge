@@ -35,7 +35,6 @@ from tendrl.ceph_bridge.manager.server_monitor import ServerMonitor
 from tendrl.ceph_bridge.persistence.persister import Persister
 
 
-
 # Manhole module optional for debugging.
 try:
     import manhole
@@ -44,6 +43,7 @@ except ImportError:
 
 
 class TopLevelEvents(gevent.greenlet.Greenlet):
+
     def __init__(self, manager):
         super(TopLevelEvents, self).__init__()
 
@@ -62,17 +62,25 @@ class TopLevelEvents(gevent.greenlet.Greenlet):
                 for tag, cluster_data in data.iteritems():
                     try:
                         if tag.startswith("ceph/cluster/"):
-                            if not cluster_data['fsid'] in self._manager.clusters:
+                            if not cluster_data[
+                                    'fsid'
+                            ] in self._manager.clusters:
                                 self._manager.on_discovery(cluster_data)
                             else:
-                                log.debug("%s: heartbeat from existing cluster %s" % (
-                                    self.__class__.__name__, cluster_data['fsid']))
+                                log.debug(
+                                    "%s: heartbeat from existing"
+                                    " cluster %s" % (
+                                        self.__class__.__name__,
+                                        cluster_data['fsid']
+                                    )
+                                )
                         else:
                             # This does not concern us, ignore it
                             log.debug("TopLevelEvents: ignoring %s" % tag)
                             pass
                     except:
-                        log.exception("Exception handling message tag=%s" % tag)
+                        log.exception(
+                            "Exception handling message tag=%s" % tag)
             gevent.sleep(3)
 
         log.info("%s complete" % self.__class__.__name__)
@@ -99,10 +107,9 @@ class Manager(object):
         # Generate events on state changes
         self.eventer = Eventer(self)
 
-        # Handle all ceph/server messages after cluster is discovered to maintain etcd schema
+        # Handle all ceph/server messages after cluster is discovered to
+        # maintain etcd schema
         self.servers = ServerMonitor(self.persister, self.eventer)
-
-
 
     def delete_cluster(self, fs_id):
         """
@@ -138,7 +145,6 @@ class Manager(object):
         self.persister.start()
         self.eventer.start()
 
-
         self.servers.start()
 
     def join(self):
@@ -151,11 +157,14 @@ class Manager(object):
         for monitor in self.clusters.values():
             monitor.join()
 
-
     def on_discovery(self, heartbeat_data):
         log.info("on_discovery: {0}".format(heartbeat_data['fsid']))
-        cluster_monitor = ClusterMonitor(heartbeat_data['fsid'], heartbeat_data['name'],
-                                         self.persister, self.servers, self.eventer)
+        cluster_monitor = ClusterMonitor(
+            heartbeat_data['fsid'],
+            heartbeat_data['name'],
+            self.persister, self.servers,
+            self.eventer
+        )
         self.clusters[heartbeat_data['fsid']] = cluster_monitor
 
         # Run before passing on the heartbeat, because otherwise the
@@ -190,7 +199,6 @@ def main():
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter(tendrl.log.FORMAT))
         log.addHandler(handler)
-
 
     if manhole is not None:
         # Enable manhole for debugging.  Use oneshot mode

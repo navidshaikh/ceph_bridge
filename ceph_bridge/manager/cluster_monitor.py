@@ -1,5 +1,4 @@
 
-import json
 import time
 import datetime
 
@@ -11,14 +10,17 @@ from tendrl.ceph_bridge.common import ceph
 
 from tendrl.ceph_bridge.gevent_util import nosleep, nosleep_mgr
 from tendrl.ceph_bridge.log import log
-from tendrl.ceph_bridge.manager.crush_node_request_factory import CrushNodeRequestFactory
-from tendrl.ceph_bridge.manager.crush_request_factory import CrushRequestFactory
+from tendrl.ceph_bridge.manager.crush_node_request_factory \
+    import CrushNodeRequestFactory
+from tendrl.ceph_bridge.manager.crush_request_factory \
+    import CrushRequestFactory
 from tendrl.ceph_bridge.manager.osd_request_factory import OsdRequestFactory
 from tendrl.ceph_bridge.manager.pool_request_factory import PoolRequestFactory
-from tendrl.ceph_bridge.common.types import CRUSH_NODE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
+from tendrl.ceph_bridge.common.types \
+    import CRUSH_NODE, CRUSH_MAP, SYNC_OBJECT_STR_TYPE, \
+    SYNC_OBJECT_TYPES, OSD, POOL, OsdMap, MdsMap, MonMap
 from tendrl.ceph_bridge.manager import config
 from tendrl.ceph_bridge.util import now
-
 
 
 FAVORITE_TIMEOUT_FACTOR = int(config.get('bridge', 'favorite_timeout_factor'))
@@ -72,20 +74,31 @@ class SyncObjects(object):
 
         I may choose to initiate RPC to retrieve the map
         """
-        log.debug("SyncObjects.on_version %s/%s" % (sync_type.str, new_version))
+        log.debug(
+            "SyncObjects.on_version %s/%s" % (sync_type.str, new_version)
+        )
         old_version = self.get_version(sync_type)
         if sync_type.cmp(new_version, old_version) > 0:
             known_version = self._known_versions[sync_type]
             if sync_type.cmp(new_version, known_version) > 0:
                 # We are out of date: request an up to date copy
                 log.info("Advanced known version %s/%s %s->%s" % (
-                    self._cluster_name, sync_type.str, known_version, new_version))
+                    self._cluster_name,
+                    sync_type.str,
+                    known_version,
+                    new_version)
+                )
                 self._known_versions[sync_type] = new_version
             else:
-                log.info("on_version: %s is newer than %s" % (new_version, old_version))
+                log.info(
+                    "on_version: %s is newer than %s" % (
+                        new_version, old_version
+                    )
+                )
 
-            # If we already have a request out for this type of map, then consider
-            # cancelling it if we've already waited for a while.
+            # If we already have a request out for this type of map,
+            # then consider cancelling it if we've already waited for
+            # a while.
             if self._fetching_at[sync_type] is not None:
                 if now() - self._fetching_at[sync_type] < self.FETCH_TIMEOUT:
                     log.info("Fetch already underway for %s" % sync_type.str)
@@ -94,9 +107,12 @@ class SyncObjects(object):
                     log.warn("Abandoning fetch for %s started at %s" % (
                         sync_type.str, self._fetching_at[sync_type]))
 
-            log.info("on_version: fetching %s/%s , currently got %s, know %s" % (
-                sync_type, new_version, old_version, known_version
-            ))
+            log.info(
+                "on_version: fetching %s/%s , "
+                "currently got %s, know %s" % (
+                    sync_type, new_version, old_version, known_version
+                )
+            )
             return self.fetch(sync_type)
 
     def fetch(self, sync_type):
@@ -105,13 +121,16 @@ class SyncObjects(object):
         self._fetching_at[sync_type] = now()
         # TODO clean up unused 'since' argument
         return ceph.get_cluster_object(self._cluster_name,
-                                           sync_type.str,None)
+                                       sync_type.str, None)
 
     def on_fetch_complete(self, sync_type, version, data):
         """
         :return A SyncObject if this version was new to us, else None
         """
-        log.debug("SyncObjects.on_fetch_complete %s/%s" % (sync_type.str, version))
+        log.debug(
+            "SyncObjects.on_fetch_complete %s/%s" % (
+                sync_type.str, version)
+        )
         self._fetching_at[sync_type] = None
 
         # A fetch might give us a newer version than we knew we had asked for
@@ -120,7 +139,10 @@ class SyncObjects(object):
 
         # Don't store this if we already got something newer
         if sync_type.cmp(version, self.get_version(sync_type)) <= 0:
-            log.warn("Ignoring outdated update %s/%s" % (sync_type.str, version))
+            log.warn(
+                "Ignoring outdated"
+                " update %s/%s" % (sync_type.str, version)
+            )
             new_object = None
         else:
             log.info("Got new version %s/%s" % (sync_type.str, version))
@@ -128,7 +150,7 @@ class SyncObjects(object):
 
         # This might not be the latest: if it's not, send out another fetch
         # right away
-        #if sync_type.cmp(self._known_versions[sync_type], version) > 0:
+        # if sync_type.cmp(self._known_versions[sync_type], version) > 0:
         #    self.fetch(sync_type)
 
         return new_object
@@ -214,7 +236,11 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
 
             if data is not None:
                 for tag, c_data in data.iteritems():
-                    log.debug("ClusterMonitor._run.ev: %s/tag=%s" % (c_data['id'] if 'id' in c_data else None, tag))
+                    log.debug(
+                        "ClusterMonitor._run.ev:"
+                        " %s/tag=%s" % (
+                            c_data['id'] if 'id' in c_data else None, tag)
+                    )
 
                 try:
                     if tag.startswith("ceph/cluster/{0}".format(self.fsid)):
@@ -224,9 +250,10 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
                         # This does not concern us, ignore it
                         pass
                 except:
-                    # Because this is our main event handling loop, swallow exceptions
-                    # instead of letting them end the world.
-                    log.exception("Exception handling message with tag %s" % tag)
+                    # Because this is our main event handling loop, swallow
+                    # exceptions instead of letting them end the world.
+                    log.exception(
+                        "Exception handling message with tag %s" % tag)
                     log.debug("Message content: %s" % data)
             gevent.sleep(4)
 
@@ -243,23 +270,27 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         Handle a ceph.heartbeat from a minion.
 
         Heartbeats come from all servers, but we're mostly interested in those
-        which come from a mon (and therefore have the 'clusters' attribute populated)
-        as these tells us whether there are any new versions of cluster maps
-        for us to fetch.
+        which come from a mon (and therefore have the 'clusters' attribute
+        populated) as these tells us whether there are any new versions of
+        cluster maps for us to fetch.
         """
 
         self.update_time = datetime.datetime.utcnow().replace(tzinfo=utc)
 
         log.debug('Checking for version increments in heartbeat')
         for sync_type in SYNC_OBJECT_TYPES:
-            data = self._sync_objects.on_version(sync_type, cluster_data['versions'][sync_type.str])
+            data = self._sync_objects.on_version(
+                sync_type, cluster_data['versions'][sync_type.str]
+            )
             if data:
                 self.on_sync_object(data)
 
     def inject_sync_object(self, sync_type, version, data):
         sync_type = SYNC_OBJECT_STR_TYPE[sync_type]
         old_object = self._sync_objects.get(sync_type)
-        new_object = self._sync_objects.on_fetch_complete(sync_type, version, data)
+        new_object = self._sync_objects.on_fetch_complete(
+            sync_type, version, data
+        )
 
         if new_object:
             # The ServerMonitor is interested in cluster maps
@@ -270,7 +301,9 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
             elif sync_type == MdsMap:
                 self._servers.on_mds_map(self.fsid, data)
 
-            self._eventer.on_sync_object(self.fsid, sync_type, new_object, old_object)
+            self._eventer.on_sync_object(
+                self.fsid, sync_type, new_object, old_object
+            )
 
         return new_object
 
@@ -282,24 +315,32 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         sync_object = data['data']
 
         sync_type = SYNC_OBJECT_STR_TYPE[data['type']]
-        new_object = self.inject_sync_object(data['type'], data['version'], sync_object)
+        new_object = self.inject_sync_object(
+            data['type'], data['version'], sync_object
+        )
         if new_object:
             self._persister.update_sync_object(
                 str(time.time()),
                 self.fsid,
                 self.name,
                 sync_type.str,
-                new_object.version if isinstance(new_object.version, int) else None,
+                new_object.version if isinstance(
+                    new_object.version, int
+                ) else None,
                 now(), sync_object)
         else:
-            log.warn("ClusterMonitor.on_sync_object: stale object received for %s" % data['type'])
+            log.warn(
+                "ClusterMonitor.on_sync_object: stale object"
+                " received for %s" % data['type']
+            )
 
     def _request(self, method, obj_type, *args, **kwargs):
         """
         Create and submit UserRequest for an apply, create, update or delete.
         """
 
-        # nosleep during preparation phase (may touch ClusterMonitor/ServerMonitor state)
+        # nosleep during preparation phase (may touch
+        # ClusterMonitor/ServerMonitor state)
         request = None
         with nosleep_mgr():
             request_factory = self.get_request_factory(obj_type)
@@ -328,10 +369,15 @@ class ClusterMonitor(gevent.greenlet.Greenlet):
         return self._request(command, obj_type, obj_id)
 
     def get_valid_commands(self, object_type, obj_ids):
-        return self.get_request_factory(object_type).get_valid_commands(obj_ids)
+        return self.get_request_factory(
+            object_type).get_valid_commands(obj_ids)
 
     def get_request_factory(self, object_type):
         try:
             return self._request_factories[object_type](self)
         except KeyError:
-            raise ValueError("{0} is not one of {1}".format(object_type, self._request_factories.keys()))
+            raise ValueError(
+                "{0} is not one of {1}".format(
+                    object_type, self._request_factories.keys()
+                )
+            )

@@ -28,7 +28,6 @@ class Ticker(gevent.greenlet.Greenlet):
             self._complete.wait(self._period)
 
 
-
 def memoize(function):
     memo = {}
 

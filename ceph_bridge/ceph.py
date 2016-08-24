@@ -11,14 +11,14 @@ import struct
 import msgpack
 import json
 
-# Note: do not import ceph modules at this scope, otherwise this module won't be able
-# to cleanly talk to us about systems where ceph isn't installed yet.
-
+# Note: do not import ceph modules at this scope, otherwise this module won't
+# be able to cleanly talk to us about systems where ceph isn't installed yet.
 # We apply a timeout to librados communications, because otherwise a stuck mon
 # would block our emission of heartbeat events
 RADOS_TIMEOUT = 20
 
-# FIXME: We probably can't assume that <clustername>.client.admin.keyring is always
+# FIXME: We probably can't assume that <clustername>.client.admin.keyring is
+# always
 # present, although this is the case on a nicely ceph-deploy'd system
 RADOS_NAME = 'client.admin'
 
@@ -81,7 +81,9 @@ def rados_command(cluster_handle, prefix, args=None, decode=True):
                 try:
                     return json_loads_byteified(outbuf)
                 except (ValueError, TypeError):
-                    raise RadosError("Invalid JSON output for command {0}".format(argdict))
+                    raise RadosError(
+                        "Invalid JSON output for command {0}".format(argdict)
+                    )
             else:
                 return None
         else:
@@ -122,10 +124,16 @@ def admin_socket(asok_path, cmd, fmt=''):
         return ret
 
     try:
-        cmd_json = do_sockio(asok_path,
-                             json.dumps({"prefix": "get_command_descriptions"}))
+        cmd_json = do_sockio(
+            asok_path,
+            json.dumps(
+                {"prefix": "get_command_descriptions"}
+            )
+        )
     except Exception as e:
-        raise AdminSocketError('exception getting command descriptions: ' + str(e))
+        raise AdminSocketError(
+            'exception getting command descriptions: ' + str(e)
+        )
 
     if cmd == 'get_command_descriptions':
         return cmd_json
@@ -209,8 +217,8 @@ def pg_summary(pgs_brief):
 
 def transform_crushmap(data, operation):
     """
-    Invokes crushtool to compile or de-compile data when operation == 'set' or 'get'
-    respectively
+    Invokes crushtool to compile or de-compile data when operation == 'set'
+    or 'get' respectively
     returns (0 on success, transformed crushmap, errors)
     """
     # write data to a tempfile because crushtool can't handle stdin :(
@@ -225,7 +233,9 @@ def transform_crushmap(data, operation):
         else:
             return 1, '', 'Did not specify get or set'
 
-        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(
+            args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         stdout, stderr = p.communicate()
         return p.returncode, stdout, stderr
 
@@ -241,7 +251,9 @@ def rados_commands(fsid, cluster_name, commands):
     from ceph_argparse import json_command
 
     # Open a RADOS session
-    cluster_handle = rados.Rados(name=RADOS_NAME, clustername=cluster_name, conffile='')
+    cluster_handle = rados.Rados(
+        name=RADOS_NAME, clustername=cluster_name, conffile=''
+    )
     cluster_handle.connect()
 
     results = []
@@ -253,15 +265,27 @@ def rados_commands(fsid, cluster_name, commands):
             ret, stdout, outs = transform_crushmap(argdict['data'], 'set')
             if ret != 0:
                 raise RuntimeError(outs)
-            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict={}, timeout=RADOS_TIMEOUT, inbuf=stdout)
+            ret, outbuf, outs = json_command(
+                cluster_handle,
+                prefix=prefix,
+                argdict={},
+                timeout=RADOS_TIMEOUT,
+                inbuf=stdout
+            )
         else:
-            ret, outbuf, outs = json_command(cluster_handle, prefix=prefix, argdict=argdict, timeout=RADOS_TIMEOUT)
+            ret, outbuf, outs = json_command(
+                cluster_handle,
+                prefix=prefix,
+                argdict=argdict,
+                timeout=RADOS_TIMEOUT
+            )
         if ret != 0:
             return {
                 'error': True,
                 'results': results,
                 'error_status': outs,
-                'versions': cluster_status(cluster_handle, cluster_name)['versions'],
+                'versions': cluster_status(
+                    cluster_handle, cluster_name)['versions'],
                 'fsid': fsid
             }
         if outbuf:
@@ -272,10 +296,10 @@ def rados_commands(fsid, cluster_name, commands):
     # For all RADOS commands, we include the cluster map versions
     # in the response, so that the caller knows which versions to
     # wait for in order to see the consequences of their actions.
-    # TODO: not all commands will require version info on completion, consider making
-    # this optional.
-    # TODO: we should endeavor to return something clean even if we can't talk to RADOS
-    # enough to get version info
+    # TODO: not all commands will require version info on completion,
+    # consider making this optional.
+    # TODO: we should endeavor to return something clean even if we can't
+    # talk to RADOS enough to get version info
     versions = cluster_status(cluster_handle, cluster_name)['versions']
 
     # Success
@@ -294,7 +318,8 @@ def ceph_command(cluster_name, command_args):
     manual execution of arbitrary commands in case the user wants to
     do something that is absent or broken in Calamari proper.
 
-    :param cluster_name: Ceph cluster name, or None to run without --cluster argument
+    :param cluster_name: Ceph cluster name, or None to run without --cluster
+    argument
     :param command_args: Command line, excluding the leading 'ceph' part.
     """
 
@@ -346,7 +371,8 @@ def radosgw_admin_command(command_args):
     manual execution of arbitrary commands in case the user wants to
     do something that is absent or broken in Calamari proper.
 
-    :param command_args: Command line, excluding the leading 'radosgw-admin' part.
+    :param command_args: Command line, excluding the leading 'radosgw-admin'
+    part.
     """
 
     args = ["radosgw-admin"] + command_args
@@ -371,7 +397,11 @@ def _get_config(cluster_name):
     """
 
     try:
-        mon_socket = glob("/var/run/ceph/{cluster_name}-mon.*.asok".format(cluster_name=cluster_name))[0]
+        mon_socket = glob(
+            "/var/run/ceph/{cluster_name}-mon.*.asok".format(
+                cluster_name=cluster_name
+            )
+        )[0]
     except IndexError:
         raise AdminSocketError("Cannot find mon socket for %s" % cluster_name)
     config_response = admin_socket(mon_socket, ['config', 'show'], 'json')
@@ -390,7 +420,9 @@ def get_cluster_object(cluster_name, sync_type, since):
     assert sync_type in SYNC_TYPES
 
     # Open a RADOS session
-    cluster_handle = rados.Rados(name=RADOS_NAME, clustername=cluster_name, conffile='')
+    cluster_handle = rados.Rados(
+        name=RADOS_NAME, clustername=cluster_name, conffile=''
+    )
     cluster_handle.connect()
 
     ret, outbuf, outs = json_command(cluster_handle,
@@ -401,7 +433,8 @@ def get_cluster_object(cluster_name, sync_type, since):
     fsid = status['fsid']
 
     if sync_type == 'config':
-        # Special case for config, get this via admin socket instead of librados
+        # Special case for config, get this via admin socket instead of
+        # librados
         raw = _get_config(cluster_name)
         version = md5(raw)
         data = json_loads_byteified(raw)
@@ -411,11 +444,18 @@ def get_cluster_object(cluster_name, sync_type, since):
             'mon_map': ('mon dump', {}, lambda d, r: d['epoch']),
             'osd_map': ('osd dump', {}, lambda d, r: d['epoch']),
             'mds_map': ('mds dump', {}, lambda d, r: d['epoch']),
-            'pg_summary': ('pg dump', {'dumpcontents': ['pgs_brief']}, lambda d, r: md5(msgpack.packb(d))),
+            'pg_summary': (
+                'pg dump',
+                {'dumpcontents': ['pgs_brief']},
+                lambda d, r: md5(msgpack.packb(d))
+            ),
             'health': ('health', {'detail': ''}, lambda d, r: md5(r))
         }[sync_type]
         kwargs['format'] = 'json'
-        ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=kwargs, timeout=RADOS_TIMEOUT)
+        ret, raw, outs = json_command(
+            cluster_handle, prefix=command,
+            argdict=kwargs, timeout=RADOS_TIMEOUT
+        )
         assert ret == 0
 
         if sync_type == 'pg_summary':
@@ -425,25 +465,35 @@ def get_cluster_object(cluster_name, sync_type, since):
             data = json_loads_byteified(raw)
             version = version_fn(data, raw)
 
-        # Internally, the OSDMap includes the CRUSH map, and the 'osd tree' output
-        # is generated from the OSD map.  We synthesize a 'full' OSD map dump to
-        # send back to the calamari server.
+        # Internally, the OSDMap includes the CRUSH map, and the 'osd tree'
+        # output is generated from the OSD map.  We synthesize a 'full' OSD
+        # map dump to send back to the calamari server.
         if sync_type == 'osd_map':
-            ret, raw, outs = json_command(cluster_handle, prefix="osd tree", argdict={
-                'format': 'json',
-                'epoch': version
-            }, timeout=RADOS_TIMEOUT)
+            ret, raw, outs = json_command(
+                cluster_handle, prefix="osd tree", argdict={
+                    'format': 'json',
+                    'epoch': version
+                }, timeout=RADOS_TIMEOUT)
             assert ret == 0
             data['tree'] = json_loads_byteified(raw)
-            # FIXME: crush dump does not support an epoch argument, so this is potentially
-            # from a higher-versioned OSD map than the one we've just read
-            ret, raw, outs = json_command(cluster_handle, prefix="osd crush dump", argdict=kwargs,
-                                          timeout=RADOS_TIMEOUT)
+            # FIXME: crush dump does not support an epoch argument, so this
+            # is potentially from a higher-versioned OSD map than the one
+            # we've just read
+            ret, raw, outs = json_command(
+                cluster_handle,
+                prefix="osd crush dump",
+                argdict=kwargs,
+                timeout=RADOS_TIMEOUT
+            )
             assert ret == 0
             data['crush'] = json_loads_byteified(raw)
 
-            ret, raw, outs = json_command(cluster_handle, prefix="osd getcrushmap", argdict={'epoch': version},
-                                          timeout=RADOS_TIMEOUT)
+            ret, raw, outs = json_command(
+                cluster_handle,
+                prefix="osd getcrushmap",
+                argdict={'epoch': version},
+                timeout=RADOS_TIMEOUT
+            )
             assert ret == 0
 
             ret, stdout, outs = transform_crushmap(raw, 'get')
@@ -456,8 +506,12 @@ def get_cluster_object(cluster_name, sync_type, since):
                 command = "osd metadata"
                 argdict = {'id': osd_id}
                 argdict.update(kwargs)
-                ret, raw, outs = json_command(cluster_handle, prefix=command, argdict=argdict,
-                                              timeout=RADOS_TIMEOUT)
+                ret, raw, outs = json_command(
+                    cluster_handle,
+                    prefix=command,
+                    argdict=argdict,
+                    timeout=RADOS_TIMEOUT
+                )
                 assert ret == 0
                 updated_osd_metadata = json_loads_byteified(raw)
                 updated_osd_metadata['osd'] = osd_id
@@ -494,7 +548,8 @@ def get_heartbeats():
 
     If a mon is running here, do some extra work:
 
-    - Report the mapping of cluster name to FSID from /etc/ceph/<cluster name>.conf
+    - Report the mapping of cluster name to FSID from
+      /etc/ceph/<cluster name>.conf
     - For all clusters, report the latest versions of all cluster maps.
 
     :return A 2-tuple of dicts for services, clusters
@@ -524,25 +579,32 @@ def get_heartbeats():
         try:
             service_data = service_status(filename)
         except (rados.Error, MonitoringError):
-            # Failed to get info for this service, stale socket or unresponsive,
-            # exclude it from report
+            # Failed to get info for this service, stale socket or
+            # unresponsive, exclude it from report
             pass
         else:
             if not service_data:
                 continue
 
-            service_name = "%s-%s.%s" % (service_data['cluster'], service_data['type'], service_data['id'])
+            service_name = "%s-%s.%s" % (
+                service_data['cluster'],
+                service_data['type'],
+                service_data['id']
+            )
 
             services[service_name] = service_data
             fsid_names[service_data['fsid']] = service_data['cluster']
 
-            if service_data['type'] == 'mon' and service_data['status']['rank'] in service_data['status']['quorum']:
+            if service_data['type'] == 'mon' and service_data[
+                    'status']['rank'] in service_data['status']['quorum']:
                 # A mon in quorum is elegible to emit a cluster heartbeat
                 mon_sockets[service_data['fsid']] = filename
 
     # Installed Ceph version (as oppose to per-service running ceph version)
     try:
-        ceph_version_str = subprocess.check_output("rpm -qa | grep ceph-[0-1]", shell=True)
+        ceph_version_str = subprocess.check_output(
+            "rpm -qa | grep ceph-[0-1]", shell=True
+        )
         ceph_version_str = ceph_version_str.split("-")[1]
     except subprocess.CalledProcessError:
         ceph_version_str = None
@@ -551,15 +613,21 @@ def get_heartbeats():
     else:
         ceph_version = None
 
-    # For each ceph cluster with an in-quorum mon on this node, interrogate the cluster
+    # For each ceph cluster with an in-quorum mon on this node, interrogate
+    # the cluster
     cluster_heartbeat = {}
     for fsid, socket_path in mon_sockets.items():
         try:
-            cluster_handle = rados.Rados(name=RADOS_NAME, clustername=fsid_names[fsid], conffile='')
+            cluster_handle = rados.Rados(
+                name=RADOS_NAME, clustername=fsid_names[fsid], conffile=''
+            )
             cluster_handle.connect()
-            cluster_heartbeat[fsid] = cluster_status(cluster_handle, fsid_names[fsid])
+            cluster_heartbeat[fsid] = cluster_status(
+                cluster_handle, fsid_names[fsid]
+            )
         except (rados.Error, MonitoringError):
-            # Something went wrong getting data for this cluster, exclude it from our report
+            # Something went wrong getting data for this cluster, exclude it
+            # from our report
             pass
 
     server_heartbeat = {
@@ -577,7 +645,9 @@ def service_status(socket_path):
     """
     try:
         cluster_name, service_type, service_id = \
-            re.match("^(.+?)-(.+?)\.(.+)\.asok$", os.path.basename(socket_path)).groups()
+            re.match(
+                "^(.+?)-(.+?)\.(.+)\.asok$",
+                os.path.basename(socket_path)).groups()
     except AttributeError:
         return None
 
@@ -585,16 +655,22 @@ def service_status(socket_path):
     # Interrogate the service for its FSID
     if service_type != 'mon':
         try:
-            fsid = json_loads_byteified(admin_socket(socket_path, ['status'], 'json'))['cluster_fsid']
+            fsid = json_loads_byteified(admin_socket(
+                socket_path,
+                ['status'],
+                'json')
+            )['cluster_fsid']
         except AdminSocketError:
             # older osd/mds daemons don't support 'status'; try our best
-            config = json_loads_byteified(admin_socket(socket_path, ['config', 'get', 'fsid'], 'json'))
+            config = json_loads_byteified(
+                admin_socket(socket_path, ['config', 'get', 'fsid'], 'json'))
             fsid = config['fsid']
     else:
         # For mons, we send some extra info here, because if they're out
         # of quorum we may not find out from the cluster heartbeats, so
         # need to use the service heartbeats to detect that.
-        status = json_loads_byteified(admin_socket(socket_path, ['mon_status'], 'json'))
+        status = json_loads_byteified(
+            admin_socket(socket_path, ['mon_status'], 'json'))
         fsid = status['monmap']['fsid']
 
     version_response = admin_socket(socket_path, ['version'], 'json')
@@ -632,10 +708,16 @@ def cluster_status(cluster_handle, cluster_name):
     # FIXME: because we're including the part with time skew data, this changes
     # all the time, should just skip that part.
     # Get digest of health
-    health_digest = md5(rados_command(cluster_handle, "health", args={'detail': ''}, decode=False))
+    health_digest = md5(
+        rados_command(
+            cluster_handle, "health", args={'detail': ''}, decode=False)
+    )
 
     # Get digest of brief pg info
-    pgs_brief = rados_command(cluster_handle, "pg dump", args={'dumpcontents': ['pgs_brief']})
+    pgs_brief = rados_command(
+        cluster_handle,
+        "pg dump", args={'dumpcontents': ['pgs_brief']}
+    )
     pg_summary_digest = md5(msgpack.packb(pg_summary(pgs_brief)))
 
     # Get digest of configuration
@@ -685,20 +767,27 @@ def _heartbeat(heartbeat_type, discover, fsid):
     service_heartbeat, cluster_heartbeat = get_heartbeats()
 
     fqdn = subprocess.check_output("hostname -f", shell=True).strip()
-    service_heartbeat.update({'id':fqdn})
+    service_heartbeat.update({'id': fqdn})
 
     if heartbeat_type == "cluster":
         if discover:
             response = {}
             for c_fsid, cluster_data in cluster_heartbeat.items():
-                cluster_data.update({'id':fqdn})
-                response.update(fire_event(cluster_data, 'ceph/cluster/{0}'.format(c_fsid)))
+                cluster_data.update({'id': fqdn})
+                response.update(
+                    fire_event(
+                        cluster_data,
+                        'ceph/cluster/{0}'.format(c_fsid)
+                    )
+                )
             return response
         if fsid:
             for c_fsid, cluster_data in cluster_heartbeat.items():
-                if fsid==c_fsid:
+                if fsid == c_fsid:
                     cluster_data.update({'id': fqdn})
-                    return fire_event(cluster_data, 'ceph/cluster/{0}'.format(c_fsid))
+                    return fire_event(
+                        cluster_data, 'ceph/cluster/{0}'.format(c_fsid)
+                    )
     else:
         return fire_event(service_heartbeat, 'ceph/server')
 
@@ -717,24 +806,29 @@ def json_load_byteified(file_handle):
         ignore_dicts=True
     )
 
+
 def json_loads_byteified(json_text):
     return _byteify(
         json.loads(json_text, object_hook=_byteify),
         ignore_dicts=True
     )
 
-def _byteify(data, ignore_dicts = False):
+
+def _byteify(data, ignore_dicts=False):
     # if this is a unicode string, return its string representation
     if isinstance(data, unicode):
         return data.encode('utf-8')
     # if this is a list of values, return list of byteified values
     if isinstance(data, list):
-        return [ _byteify(item, ignore_dicts=True) for item in data ]
+        return [_byteify(item, ignore_dicts=True) for item in data]
     # if this is a dictionary, return dictionary of byteified keys and values
     # but only if we haven't already byteified it
     if isinstance(data, dict) and not ignore_dicts:
         return {
-            _byteify(key, ignore_dicts=True): _byteify(value, ignore_dicts=True)
+            _byteify(
+                key,
+                ignore_dicts=True
+            ): _byteify(value, ignore_dicts=True)
             for key, value in data.iteritems()
         }
     # if it's anything else, return it in its original form

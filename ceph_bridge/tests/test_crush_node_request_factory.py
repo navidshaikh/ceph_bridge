@@ -1,7 +1,8 @@
 from unittest import TestCase
 from mock import MagicMock, patch
 
-from ceph_bridge.manager.crush_node_request_factory import CrushNodeRequestFactory
+from ceph_bridge.manager.crush_node_request_factory \
+    import CrushNodeRequestFactory
 from ceph_bridge.manager.user_request import RadosRequest
 import json
 
@@ -30,8 +31,11 @@ class TestCrushNodeFactory(TestCase):
         osd_map_attrs = {'get_tree_node': lambda x: crush_node_by_id[x],
                          'osd_tree_node_by_id': {2: {'name': 'osd.2'},
                                                  3: {'name': 'osd.3'}},
-                         'parent_bucket_by_node_id': {-2: {'name': 'root', 'type': 'root'}},
-                         'osds_by_id': {0: {'up': True}, 1: {'up': False}}}
+                         'parent_bucket_by_node_id': {
+                             -2: {'name': 'root', 'type': 'root'
+                                  }
+        },
+            'osds_by_id': {0: {'up': True}, 1: {'up': False}}}
         fake_osd_map = MagicMock()
         fake_osd_map.configure_mock(**osd_map_attrs)
 
@@ -93,15 +97,27 @@ class TestCrushNodeFactory(TestCase):
               [('osd crush add-bucket', {'name': 'fake', 'type': 'host'}),
                ('osd crush reweight', {'name': 'osd.2', 'weight': 0.0}),
                ('osd crush remove', {'name': 'osd.2'}),
-               ('osd crush add', {'args': ['host=fake'], 'id': 2, 'weight': 0.0}),
-               ('config-key put', {'key': 'daemon-private/osd.2/v1/calamari/osd_crush_location',
-                                   'val': json.dumps({'parent_type': 'host', 'parent_name': 'fake', 'hostname': 'figment001'})}),
+               ('osd crush add', {
+                'args': ['host=fake'], 'id': 2, 'weight': 0.0}),
+               ('config-key put',
+                {'key': 'daemon-private/osd.2/v1/calamari/osd_crush_location',
+                 'val': json.dumps(
+                     {'parent_type': 'host',
+                      'parent_name': 'fake',
+                      'hostname': 'figment001'})}
+                ),
                ('osd crush reweight', {'name': 'osd.2', 'weight': 22}),
                ('osd crush reweight', {'name': 'osd.3', 'weight': 0.0}),
                ('osd crush remove', {'name': 'osd.3'}),
-               ('osd crush add', {'args': ['host=fake'], 'id': 3, 'weight': 0.0}),
-               ('config-key put', {'key': 'daemon-private/osd.3/v1/calamari/osd_crush_location',
-                                   'val': json.dumps({'parent_type': 'host', 'parent_name': 'fake', 'hostname': 'figment001'})}),
+               ('osd crush add', {
+                'args': ['host=fake'], 'id': 3, 'weight': 0.0}),
+               ('config-key put',
+                {'key': 'daemon-private/osd.3/v1/calamari/osd_crush_location',
+                 'val': json.dumps(
+                     {'parent_type': 'host',
+                      'parent_name': 'fake',
+                      'hostname': 'figment001'})}
+                ),
                ('osd crush reweight', {'name': 'osd.3', 'weight': 33})]])
 
     @patch('cthulhu.manager.user_request.LocalClient', fake_salt)
@@ -148,7 +164,8 @@ class TestCrushNodeFactory(TestCase):
                              ]
                    }
         update_node = self.factory.update(-1, attribs)
-        self.assertIsInstance(update_node, RadosRequest, 'adding items to crush node')
+        self.assertIsInstance(update_node, RadosRequest,
+                              'adding items to crush node')
 
         update_node.submit(54321)
         assert self.fake_salt.run_job.call_args[0][2][2] == \
@@ -168,7 +185,8 @@ class TestCrushNodeFactory(TestCase):
                              ]
                    }
         update_node = self.factory.update(-1, attribs)
-        self.assertIsInstance(update_node, RadosRequest, 'removing items from crush node')
+        self.assertIsInstance(update_node, RadosRequest,
+                              'removing items from crush node')
 
         update_node.submit(54321)
         assert self.fake_salt.run_job.call_args[0][2][2] == \
@@ -187,7 +205,8 @@ class TestCrushNodeFactory(TestCase):
                              ]
                    }
         update_node = self.factory.update(-1, attribs)
-        self.assertIsInstance(update_node, RadosRequest, 'removing items from crush node')
+        self.assertIsInstance(update_node, RadosRequest,
+                              'removing items from crush node')
 
         update_node.submit(54321)
         assert self.fake_salt.run_job.call_args[0][2][2] == \
@@ -201,7 +220,8 @@ class TestCrushNodeFactory(TestCase):
         self.assertIsInstance(delete_node, RadosRequest, 'renaming crush node')
 
         delete_node.submit(54321)
-        assert self.fake_salt.run_job.call_args[0][2][2] == [('osd crush remove', {'name': 'rack1'})]
+        assert self.fake_salt.run_job.call_args[0][2][
+            2] == [('osd crush remove', {'name': 'rack1'})]
 
     @patch('cthulhu.manager.user_request.LocalClient', fake_salt)
     def test_update_rename_relink_to_parent(self):
@@ -227,15 +247,24 @@ class TestCrushNodeFactory(TestCase):
             ('osd crush move', {'args': ['root=root'], 'name': 'renamed'}),
             ('osd crush reweight', {'name': 'osd.2', 'weight': 0.0}),
             ('osd crush remove', {'name': 'osd.2'}),
-            ('osd crush add', {'args': ['rack=renamed'], 'id': 2, 'weight': 0.0}),
-            ('config-key put', {'key': 'daemon-private/osd.2/v1/calamari/osd_crush_location',
-                                'val': json.dumps({'parent_type': 'rack', 'parent_name': 'renamed', 'hostname': 'figment001'})}),
+            ('osd crush add', {
+             'args': ['rack=renamed'], 'id': 2, 'weight': 0.0}),
+            ('config-key put',
+             {'key': 'daemon-private/osd.2/v1/calamari/osd_crush_location',
+              'val': json.dumps(
+                  {'parent_type': 'rack',
+                   'parent_name': 'renamed', 'hostname': 'figment001'})}),
             ('osd crush reweight', {'name': 'osd.2', 'weight': 22}),
             ('osd crush reweight', {'name': 'osd.3', 'weight': 0.0}),
             ('osd crush remove', {'name': 'osd.3'}),
-            ('osd crush add', {'args': ['rack=renamed'], 'id': 3, 'weight': 0.0}),
-            ('config-key put', {'key': 'daemon-private/osd.3/v1/calamari/osd_crush_location',
-                                'val': json.dumps({'parent_type': 'rack', 'parent_name': 'renamed', 'hostname': 'figment001'})}),
+            ('osd crush add', {
+             'args': ['rack=renamed'], 'id': 3, 'weight': 0.0}),
+            ('config-key put',
+             {'key': 'daemon-private/osd.3/v1/calamari/osd_crush_location',
+              'val': json.dumps(
+                  {'parent_type': 'rack',
+                   'parent_name': 'renamed',
+                   'hostname': 'figment001'})}),
             ('osd crush reweight', {'name': 'osd.3', 'weight': 33}),
             ('osd crush remove', {'name': 'rack1'}),
         ]

@@ -22,10 +22,12 @@ from tendrl.ceph_bridge.util import now
 from tendrl.ceph_bridge.log import log
 
 
-CLUSTER_MAP_RETENTION = datetime.timedelta(seconds=int(config.get('bridge', 'cluster_map_retention')))
+CLUSTER_MAP_RETENTION = datetime.timedelta(
+    seconds=int(config.get('bridge', 'cluster_map_retention')))
 
 
 class deferred_call():
+
     def __init__(self, fn, args, kwargs):
         self.fn = fn
         self.args = args
@@ -35,13 +37,13 @@ class deferred_call():
         self.fn(*self.args, **self.kwargs)
 
 
-
 class Persister(gevent.greenlet.Greenlet):
     """
     Asynchronously persist a queue of updates.  This is for use by classes
     that maintain the primary copy of state in memory, but also lazily update
     the DB so that they can recover from it on restart.
     """
+
     def __init__(self):
         super(Persister, self).__init__()
 
@@ -68,7 +70,10 @@ class Persister(gevent.greenlet.Greenlet):
                             try:
                                 dc.call_it()
                             except Exception as ex:
-                                log.exception("Persister exception persisting data: %s" % (dc.fn,))
+                                log.exception(
+                                    "Persister exception persisting"
+                                    " data: %s" % (dc.fn,)
+                                )
                                 log.exception(ex)
                         return defer
                     else:
@@ -76,11 +81,24 @@ class Persister(gevent.greenlet.Greenlet):
                 except AttributeError:
                     return object.__getattribute__(self, item)
 
-    def _update_sync_object(self, updated, fsid, name, sync_type, version, when, data):
-        self._store.save(SyncObject(updated=updated, fsid=fsid, cluster_name=name,
-                              sync_type=sync_type, version=version, when=when,
-                              data=data))
-
+    def _update_sync_object(self,
+                            updated,
+                            fsid,
+                            name,
+                            sync_type,
+                            version,
+                            when,
+                            data):
+        self._store.save(
+            SyncObject(
+                updated=updated,
+                fsid=fsid,
+                cluster_name=name,
+                sync_type=sync_type,
+                version=version,
+                when=when,
+                data=data)
+        )
 
     def _create_server(self, server):
         self._store.save(server)
@@ -99,7 +117,6 @@ class Persister(gevent.greenlet.Greenlet):
             gevent.sleep(0.1)
             pass
 
-
     def stop(self):
         self._complete.set()
 
@@ -107,4 +124,3 @@ class Persister(gevent.greenlet.Greenlet):
         etcd_kwargs = {'port': int(config.get("bridge", "etcd_port")),
                        'host': config.get("bridge", "etcd_connection")}
         return etcd_server(etcd_kwargs=etcd_kwargs)
-

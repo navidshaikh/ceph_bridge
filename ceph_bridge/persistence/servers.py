@@ -43,5 +43,6 @@ class Service(EtcdObj):
     server_fqdn = fields.StrField("server_fqdn")
 
     def render(self):
-        self.__name__ = self.__name__ % (self.fsid, self.server_fqdn, self.service_type, self.service_id)
+        self.__name__ = self.__name__ % (
+            self.fsid, self.server_fqdn, self.service_type, self.service_id)
         return super(Service, self).render()

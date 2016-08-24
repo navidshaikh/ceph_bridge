@@ -60,7 +60,8 @@ if __name__ == '__main__':
     else:
         raise AssertionError("Failed")
 
-    # This should raise no exception when we try push to an unlimited size queue
+    # This should raise no exception when we try push to an unlimited size
+    # queue
     bigq = gevent.queue.Queue(0)
     with nosleep_mgr():
         for i in range(0, 10000):

@@ -46,13 +46,12 @@ class Event(EtcdObj):
     fsid = fields.StrField("fsid")
     # Optionally associated with a server
     fqdn = fields.StrField("fqdn")
-    # Optionally associated with a service type ('osd', 'mon', 'mds') (FSID must be set)
+    # Optionally associated with a service type ('osd', 'mon', 'mds') (FSID
+    # must be set)
     service_type = fields.StrField("service_type")
     # Optionally associate with a particular service (service_type must be set)
     service_id = fields.StrField("service_id")
 
-
     def render(self):
         self.__name__ = self.__name__ % (self.fsid, self.id)
         return super(Event, self).render()
-

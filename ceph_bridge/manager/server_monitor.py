@@ -47,7 +47,11 @@ class ServerState(object):
     A Ceph server, may be something we have had a heartbeat from or
     may be something we learned about from Ceph.
     """
-    def __init__(self, fqdn, hostname, managed, last_contact, boot_time, ceph_version):
+
+    def __init__(
+            self, fqdn, hostname, managed,
+            last_contact, boot_time, ceph_version
+    ):
         # Note that FQDN is fudged when we learn about a server via
         # the CRUSH map (i.e. when we're talking to mons but not OSDs)
         # to contain the hostname instead.  The implied assumption
@@ -83,8 +87,10 @@ class ServiceState(object):
     """
     A Ceph service, this object is used to track its affinity to a server
     """
+
     def __init__(self, fsid, service_type, service_id):
-        # It's easy to accidentally pass in int sometimes so enforce consistency
+        # It's easy to accidentally pass in int sometimes so enforce
+        # consistency
         assert isinstance(service_id, basestring)
 
         self.fsid = fsid
@@ -109,16 +115,20 @@ class ServiceState(object):
         self.server_state = server_state
 
     def __repr__(self):
-        return "<ServiceState '%s'>" % ((self.fsid, self.service_type, self.service_id),)
+        return "<ServiceState '%s'>" % (
+            (self.fsid, self.service_type, self.service_id),
+        )
 
 
 class ServerMonitor(greenlet.Greenlet):
     """
-    This class receives updates about servers and their services from two sources:
+    This class receives updates about servers and their services from two
+    sources:
 
     - The ceph.services salt message from managed servers
     - Updates to the OSD map which may tell us about unmanaged servers
     """
+
     def __init__(self, persister, eventer):
         super(ServerMonitor, self).__init__()
 
@@ -154,8 +164,13 @@ class ServerMonitor(greenlet.Greenlet):
                         try:
                             self.on_server_heartbeat(s_data['id'], s_data)
                         except:
-                            log.debug("Message detail: %s" % json.dumps(s_data))
-                            log.exception("Error handling ceph/server message from %s" % s_data['id'])
+                            log.debug(
+                                "Message detail: %s" % json.dumps(s_data)
+                            )
+                            log.exception(
+                                "Error handling ceph/server"
+                                " message from %s" % s_data['id']
+                            )
             gevent.sleep(10)
 
         log.info("Completed %s" % self.__class__.__name__)
@@ -194,7 +209,10 @@ class ServerMonitor(greenlet.Greenlet):
         for node in osd_tree["nodes"]:
             if node["type"] == CRUSH_HOST_TYPE:
                 host = node["name"]
-                for osd in find_descendants(node, lambda c: c['type'] == CRUSH_OSD_TYPE):
+                for osd in find_descendants(node,
+                                            lambda c: c[
+                                                'type'] == CRUSH_OSD_TYPE
+                                            ):
                     osd_id_to_host[osd["id"]] = host
 
         for osd in osd_map['osds']:
@@ -243,16 +261,23 @@ class ServerMonitor(greenlet.Greenlet):
         log.debug("ServerMonitor.on_osd_map: epoch %s" % osd_map['epoch'])
 
         hostname_to_osds = self.get_hostname_to_osds(osd_map)
-        log.debug("ServerMonitor.on_osd_map: got service data for %s servers" % len(hostname_to_osds))
+        log.debug(
+            "ServerMonitor.on_osd_map: got service"
+            " data for %s servers" % len(hostname_to_osds)
+        )
 
         osds_in_map = set()
         for hostname, osds in hostname_to_osds.items():
-            id_to_osd = dict([(ServiceId(osd_map['fsid'], 'osd', str(o['osd'])), o) for o in osds])
+            id_to_osd = dict(
+                [(ServiceId(
+                    osd_map['fsid'], 'osd', str(o['osd'])
+                ), o) for o in osds]
+            )
             osds_in_map |= set(id_to_osd.keys())
 
             # Identify if this is a CRUSH alias rather than a real hostname, by
-            # checking if any of the OSDs mentioned are already recorded as children
-            # of a managed host.
+            # checking if any of the OSDs mentioned are already recorded as
+            # children of a managed host.
             crush_alias_to = None
             if hostname not in self.hostname_to_server:
                 for service_id, osd in id_to_osd.items():
@@ -264,33 +289,52 @@ class ServerMonitor(greenlet.Greenlet):
                         pass
 
             if crush_alias_to:
-                log.info("'{0}' is a CRUSH alias to {1}".format(hostname, crush_alias_to))
+                log.info(
+                    "'{0}' is a CRUSH alias to {1}".format(
+                        hostname, crush_alias_to)
+                )
                 continue
 
-            # Look up or create ServerState for the server named in the CRUSH map
+            # Look up or create ServerState for the server named in the
+            # CRUSH map
             try:
                 server_state = self.hostname_to_server[hostname]
             except KeyError:
                 # Fake FQDN to equal hostname
                 server_state = ServerState(hostname, hostname, managed=False,
-                                           last_contact=None, boot_time=None, ceph_version=None)
+                                           last_contact=None,
+                                           boot_time=None,
+                                           ceph_version=None
+                                           )
                 self.inject_server(server_state)
-                self._persister.create_server(Server(fsid=osd_map['fsid'],
-                    fqdn=server_state.fqdn,
-                    hostname=server_state.hostname,
-                    managed=server_state.managed))
+                self._persister.create_server(
+                    Server(fsid=osd_map['fsid'],
+                           fqdn=server_state.fqdn,
+                           hostname=server_state.hostname,
+                           managed=server_state.managed)
+                )
 
-            # Register all the OSDs reported under this hostname with the ServerState
+            # Register all the OSDs reported under this hostname with the
+            # ServerState
             for service_id, osd in id_to_osd.items():
                 if not server_state.managed:
-                    # Only pay attention to these services for unmanaged servers,
+                    # Only pay attention to these services for unmanaged
+                    # servers,
                     # for managed servers rely on ceph/server salt messages
-                    self._register_service(server_state, service_id, bool(osd['up']), None, fsid=osd_map['fsid'],
-                                           fqdn=server_state.fqdn)
+                    self._register_service(
+                        server_state,
+                        service_id,
+                        bool(osd['up']),
+                        None, fsid=osd_map['fsid'],
+                        fqdn=server_state.fqdn
+                    )
 
         # Remove ServiceState for any OSDs for this FSID which are not
         # mentioned in hostname_to_osds
-        known_osds = set([s.id for s in self.fsid_services[osd_map['fsid']] if s.service_type == 'osd'])
+        known_osds = set(
+            [s.id for s in self.fsid_services[
+                osd_map['fsid']] if s.service_type == 'osd']
+        )
         for stale_service_id in known_osds - osds_in_map:
             self.forget_service(self.services[stale_service_id])
 
@@ -306,7 +350,10 @@ class ServerMonitor(greenlet.Greenlet):
         map_mds = set([ServiceId(
             fsid, 'mds', i['name']
         ) for i in mds_map['info'].values()])
-        known_mds = set([s.id for s in self.fsid_services[fsid] if s.service_type == 'mds'])
+        known_mds = set(
+            [s.id for s in self.fsid_services[
+                fsid] if s.service_type == 'mds']
+        )
         for stale_mds_id in known_mds - map_mds:
             self.forget_service(self.services[stale_mds_id])
 
@@ -316,10 +363,16 @@ class ServerMonitor(greenlet.Greenlet):
         When a new mon map is received, use it to eliminate any mon
         ServiceState records that no longer exist in the real world.
         """
-        map_mons = set([ServiceId(mon_map['fsid'], 'mon', m['name']) for m in mon_map['mons']])
+        map_mons = set(
+            [ServiceId(mon_map['fsid'],
+                       'mon', m['name']
+                       ) for m in mon_map['mons']]
+        )
         known_mons = set([
             s.id
-            for s in self.fsid_services[mon_map['fsid']] if s.service_type == 'mon'
+            for s in self.fsid_services[
+                mon_map['fsid']
+            ] if s.service_type == 'mon'
         ])
         for stale_mon_id in known_mons - map_mons:
             self.forget_service(self.services[stale_mon_id])
@@ -327,11 +380,11 @@ class ServerMonitor(greenlet.Greenlet):
     @nosleep
     def on_server_heartbeat(self, fqdn, server_heartbeat):
         """
-        Call back for when a ceph.service message is received from a salt minion.
-
-        This is actually a fairly simple operation of updating the in memory ServerState
-        to reflect what is in the message, but it's convoluted because we may be seeing
-        a new server, a known server, or a server which was known but unmanaged.
+        Call back for when a ceph.service message is received from a salt
+        minion. This is actually a fairly simple operation of updating the
+        in memory ServerState to reflect what is in the message, but it's
+        convoluted because we may be seeing a new server, a known server,
+        or a server which was known but unmanaged.
         """
         log.debug("ServerMonitor.on_server_heartbeat: %s" % fqdn)
         new_server = True
@@ -340,8 +393,8 @@ class ServerMonitor(greenlet.Greenlet):
             server_state = self.servers[fqdn]
             new_server = False
         except KeyError:
-            # Look up the grains for this server, we need to know its hostname in order
-            # to resolve this vs. the OSD map.
+            # Look up the grains for this server, we need to know its
+            # hostname in order to resolve this vs. the OSD map.
             hostname = fqdn
 
             if hostname in self.hostname_to_server:
@@ -350,66 +403,81 @@ class ServerMonitor(greenlet.Greenlet):
                     # Take over a ServerState that was created from OSD map
                     server_state.managed = True
                     old_fqdn = server_state.fqdn
-                    # OSD map servers would have faked up FQDN as hostname, so clear that out
+                    # OSD map servers would have faked up FQDN as hostname,
+                    # so clear that out
                     del self.servers[old_fqdn]
                     server_state.fqdn = fqdn
                     self.servers[server_state.fqdn] = server_state
-                    for service_name, service in server_heartbeat['services'].items():
-                        self._persister.create_server(Server(fsid=service['fsid'],
-                                                             fqdn=server_state.fqdn,
-                                                             managed=True,
-                                                             ))
+                    for service_name, service in server_heartbeat[
+                            'services'].items():
+                        self._persister.create_server(
+                            Server(fsid=service['fsid'],
+                                   fqdn=server_state.fqdn,
+                                   managed=True,
+                                   )
+                        )
                         break
                     new_server = False
                     log.info("Server %s went from unmanaged to managed" % fqdn)
                     newly_managed_server = True
                 else:
-                    # We will go on to treat these as distinct servers even though
-                    # they have the same hostname
-                    log.warn("Hostname clash: FQDNs '%s' and '%s' both have hostname %s" % (
-                        fqdn, server_state.fqdn, hostname
-                    ))
+                    # We will go on to treat these as distinct servers even
+                    # though they have the same hostname
+                    log.warn("Hostname clash: FQDNs '%s' and"
+                             " '%s' both have hostname %s" % (
+                                 fqdn, server_state.fqdn, hostname
+                             ))
         else:
-            # The case where hostname == FQDN, we may already have this FQDN in our
-            # map from an unmanaged server being reported by hostname.
+            # The case where hostname == FQDN, we may already have this
+            # FQDN in our map from an unmanaged server being reported by
+            # hostname.
             if not server_state.managed:
                 newly_managed_server = True
                 server_state.managed = True
-                for service_name, service in server_heartbeat['services'].items():
-                    self._persister.create_server(Server(fsid=service['fsid'],
-                                                         fqdn=server_state.fqdn,
-                                                         managed=True,
-                                                         ))
+                for service_name, service in server_heartbeat[
+                        'services'].items():
+                    self._persister.create_server(
+                        Server(fsid=service['fsid'],
+                               fqdn=server_state.fqdn,
+                               managed=True,
+                               )
+                    )
                     log.info("Server %s went from unmanaged to managed" % fqdn)
                     break
 
-
-
-        boot_time = datetime.datetime.fromtimestamp(server_heartbeat['boot_time'], tz=tz.tzutc())
+        boot_time = datetime.datetime.fromtimestamp(
+            server_heartbeat['boot_time'], tz=tz.tzutc()
+        )
         if new_server:
             hostname = fqdn
             server_state = ServerState(fqdn, hostname, managed=True,
                                        last_contact=now(), boot_time=boot_time,
-                                       ceph_version=server_heartbeat['ceph_version'])
+                                       ceph_version=server_heartbeat[
+                                           'ceph_version']
+                                       )
             self.inject_server(server_state)
             for service_name, service in server_heartbeat['services'].items():
-                self._persister.create_server(Server(fsid=service['fsid'],
-                                                     fqdn=server_state.fqdn,
-                                                     hostname=server_state.hostname,
-                                                     managed=server_state.managed,
-                                                     last_contact=server_state.last_contact,
-                                                     boot_time=boot_time,
-                                                     ceph_version=server_heartbeat['ceph_version']
-            ))
+                self._persister.create_server(
+                    Server(fsid=service['fsid'],
+                           fqdn=server_state.fqdn,
+                           hostname=server_state.hostname,
+                           managed=server_state.managed,
+                           last_contact=server_state.last_contact,
+                           boot_time=boot_time,
+                           ceph_version=server_heartbeat['ceph_version']
+                           )
+                )
                 log.info("Saw server %s for the first time" % server_state)
                 break
 
         server_state.last_contact = now()
         for service_name, service in server_heartbeat['services'].items():
-            self._persister.create_server(Server(fsid=service['fsid'],
-                                                 fqdn=server_state.fqdn,
-                                                 last_contact=server_state.last_contact,
-                                                 ))
+            self._persister.create_server(
+                Server(fsid=service['fsid'],
+                       fqdn=server_state.fqdn,
+                       last_contact=server_state.last_contact,
+                       )
+            )
             break
 
         if server_state.boot_time != boot_time:
@@ -419,38 +487,46 @@ class ServerMonitor(greenlet.Greenlet):
             old_boot_time = server_state.boot_time
             server_state.boot_time = boot_time
             for service_name, service in server_heartbeat['services'].items():
-                self._persister.create_server(Server(fsid=service['fsid'],
-                                                     fqdn=server_state.fqdn,
-                                                     boot_time=server_state.boot_time,
-                                                     ))
+                self._persister.create_server(
+                    Server(fsid=service['fsid'],
+                           fqdn=server_state.fqdn,
+                           boot_time=server_state.boot_time,
+                           )
+                )
                 break
 
-            if old_boot_time is not None:  # i.e. a reboot, not an unmanaged->managed transition
+            if old_boot_time is not None:
+                # i.e. a reboot, not an unmanaged->managed transition
                 if server_state.boot_time < old_boot_time:
                     log.warn("Server boot time went backwards")
                 elif server_state.boot_time - old_boot_time < REBOOT_THRESHOLD:
                     log.warn("Server boot time changed, but only a little")
                 else:
-                    # A substantial forward change in boot time, that's a reboot: emit
-                    # a user visible event
+                    # A substantial forward change in boot time, that's a
+                    # reboot: emit a user visible event
                     log.warn("{0} rebooted!".format(fqdn))
                     self._eventer.on_reboot(server_state, False)
 
         if server_state.ceph_version != server_heartbeat['ceph_version']:
-            # Interpret "no package installed but some services running" as meaning we're
-            # in the process of upgrading.
-            upgrading = server_heartbeat['ceph_version'] is None and server_heartbeat['services']
+            # Interpret "no package installed but some services running" as
+            # meaning we're in the process of upgrading.
+            upgrading = server_heartbeat[
+                'ceph_version'
+            ] is None and server_heartbeat['services']
             if server_heartbeat['ceph_version'] is None and upgrading:
-                # Ignore version=None while upgrading to avoid generating spurious
-                # "ceph uninstalled" events
+                # Ignore version=None while upgrading to avoid generating
+                # spurious "ceph uninstalled" events
                 pass
             else:
                 server_state.ceph_version = server_heartbeat['ceph_version']
-                for service_name, service in server_heartbeat['services'].items():
-                    self._persister.create_server(Server(fsid=service['fsid'],
-                                                         fqdn=server_state.fqdn,
-                                                         ceph_version=server_state.ceph_version,
-                                                         ))
+                for service_name, service in server_heartbeat[
+                        'services'].items():
+                    self._persister.create_server(
+                        Server(fsid=service['fsid'],
+                               fqdn=server_state.fqdn,
+                               ceph_version=server_state.ceph_version,
+                               )
+                    )
                     break
 
                 if not (new_server or newly_managed_server):
@@ -458,17 +534,29 @@ class ServerMonitor(greenlet.Greenlet):
 
         seen_id_tuples = set()
         for service_name, service in server_heartbeat['services'].items():
-            id_tuple = ServiceId(service['fsid'], service['type'], service['id'])
+            id_tuple = ServiceId(
+                service['fsid'], service['type'], service['id']
+            )
             seen_id_tuples.add(id_tuple)
-            self._register_service(server_state, id_tuple, running=True, status=service['status'],
-                                   fsid=service['fsid'], fqdn=fqdn)
+            self._register_service(
+                server_state,
+                id_tuple,
+                running=True,
+                status=service['status'],
+                fsid=service['fsid'], fqdn=fqdn
+            )
 
         # For any service which was last reported on this server but
         # is now gone, mark it as not running
-        for unseen_id_tuple in set(server_state.services.keys()) ^ seen_id_tuples:
+        for unseen_id_tuple in set(
+                server_state.services.keys()
+        ) ^ seen_id_tuples:
             service_state = self.services[unseen_id_tuple]
             if service_state.running:
-                log.info("Service %s stopped on server %s" % (service_state, server_state))
+                log.info(
+                    "Service %s stopped on server %s" % (
+                        service_state, server_state)
+                )
                 service_state.running = False
 
         if new_server or newly_managed_server:
@@ -476,7 +564,9 @@ class ServerMonitor(greenlet.Greenlet):
             # the ServiceState objects have been created
             self._eventer.on_server(server_state)
 
-    def _register_service(self, server_state, service_id, running, status, fsid, fqdn):
+    def _register_service(
+            self, server_state,
+            service_id, running, status, fsid, fqdn):
         log.debug("ServerMonitor._register_service: %s" % (service_id,))
         try:
             service_state = self.services[service_id]
@@ -494,7 +584,6 @@ class ServerMonitor(greenlet.Greenlet):
             ))
             return
 
-
         if running != service_state.running:
             if running:
                 log.info("Service %s started" % service_state)
@@ -504,32 +593,42 @@ class ServerMonitor(greenlet.Greenlet):
                 service_state.running = False
 
         if status != service_state.status:
-            # This usually means the mon status object has changed, we'll get one
-            # of these from each up mon every time the mon cluster state changes.
+            # This usually means the mon status object has changed, we'll
+            # get one of these from each up mon every time the mon cluster
+            # state changes.
             log.info("Service %s status update" % service_state)
             service_state.status = status
 
-
         if service_state.server_state != server_state:
             old_server_state = service_state.server_state
-            log.info("Associated service %s with server %s (was %s)" % (service_id, server_state, old_server_state))
+            log.info("Associated service %s with server"
+                     " %s (was %s)" % (
+                         service_id,
+                         server_state, old_server_state
+                     )
+                     )
             service_state.set_server(server_state)
             if old_server_state is not None:
                 del old_server_state.services[service_id]
             server_state.services[service_id] = service_state
 
-            if old_server_state.managed is False and not old_server_state.services:
-                log.info("Expunging stale server record {0}".format(old_server_state.fqdn))
+            if old_server_state.managed is False and not\
+               old_server_state.services:
+                log.info("Expunging stale server "
+                         "record {0}".format(old_server_state.fqdn)
+                         )
                 del self.servers[old_server_state.fqdn]
                 # TODO (rohan) Implement delete key/dir in etcdobj
-                #self._persister.delete_server(old_server_state.fqdn)
+                # self._persister.delete_server(old_server_state.fqdn)
         log.debug("Updating service %s" % service_state.service_id)
-        self._persister.create_service(Service(fsid=service_state.fsid,
-                                               server_fqdn=fqdn,
-                                               service_id=service_state.service_id,
-                                               service_type=service_state.service_type,
-                                               status=json.dumps(service_state.status),
-                                               running=service_state.running))
+        self._persister.create_service(
+            Service(fsid=service_state.fsid,
+                    server_fqdn=fqdn,
+                    service_id=service_state.service_id,
+                    service_type=service_state.service_type,
+                    status=json.dumps(service_state.status),
+                    running=service_state.running)
+        )
 
     def stop(self):
         self._complete.set()
@@ -539,7 +638,13 @@ class ServerMonitor(greenlet.Greenlet):
         All the ServerStates which are involved in
         this cluster (i.e. hosting a service with this FSID)
         """
-        return list(set([s.server_state for s in self.fsid_services[fsid] if s.server_state is not None]))
+        return list(
+            set(
+                [s.server_state for s in self.fsid_services[
+                    fsid
+                ] if s.server_state is not None]
+            )
+        )
 
     def get_all(self):
         """Give me all the ServerStates"""
@@ -564,8 +669,9 @@ class ServerMonitor(greenlet.Greenlet):
 
     def list_by_service(self, service_ids):
         """
-        Return a list of 2-tuples mapping service ID to FQDN for the specified services,
-        where the FQDN is None if service not found.
+        Return a list of 2-tuples mapping service ID to FQDN
+        for the specified services, where the FQDN is None if
+        service not found.
         """
         result = []
         for service_id in service_ids:
@@ -578,10 +684,14 @@ class ServerMonitor(greenlet.Greenlet):
         Look up a list of ServiceState objects by ID.
 
         :param service_ids: A list of ServiceId
-        :returns: A list of the same length as service_ids, containing ServiceState
+        :returns: A list of the same length as service_ids,
+        containing ServiceState
                 objects or None for any unfound ServiceIds.
         """
-        return [self.services.get(service_id, None) for service_id in service_ids]
+        return [self.services.get(
+            service_id,
+            None
+        ) for service_id in service_ids]
 
     def delete(self, fqdn):
         """
@@ -596,12 +706,13 @@ class ServerMonitor(greenlet.Greenlet):
             self._persister.delete_service(service.id)
 
         if server_state.hostname in self.hostname_to_server:
-            # This isn't always the case, because if two server had the same hostname
-            # and one was deleted, the second one is not present in hostname_to_server any more
+            # This isn't always the case, because if two server had
+            # the same hostname and one was deleted, the second one
+            # is not present in hostname_to_server any more
             del self.hostname_to_server[server_state.hostname]
         del self.servers[fqdn]
         # TODO (rohan) Implement delete key/dir in etcdobj
-        #self._persister.delete_server(fqdn)
+        # self._persister.delete_server(fqdn)
 
     def delete_cluster(self, fsid):
         if fsid not in self.fsid_services:
@@ -617,7 +728,9 @@ class ServerMonitor(greenlet.Greenlet):
             # If we inferred a host from the OSD map for this cluster
             # then when the last service is gone the server should
             # go away too
-            if service.server_state and (not service.server_state.managed) and (not service.server_state.services):
+            if service.server_state and (
+                    not service.server_state.managed
+            ) and (not service.server_state.services):
                 self.delete(service.server_state.fqdn)
 
         del self.fsid_services[fsid]
@@ -630,10 +743,15 @@ class ServerMonitor(greenlet.Greenlet):
             'fqdn': server_state.fqdn,
             'hostname': server_state.hostname,
             'managed': server_state.managed,
-            'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
-            'boot_time': server_state.boot_time.isoformat() if server_state.boot_time else None,
+            'last_contact': server_state.last_contact.isoformat()
+            if server_state.last_contact else None,
+            'boot_time': server_state.boot_time.isoformat()
+            if server_state.boot_time else None,
             'ceph_version': server_state.ceph_version,
-            'services': [{'id': tuple(s.id), 'running': s.running} for s in server_state.services.values()]
+            'services': [
+                {'id': tuple(s.id), 'running': s.running
+                 } for s in server_state.services.values()
+            ]
         }
 
     def dump_cluster(self, server_state, cluster):
@@ -645,7 +763,9 @@ class ServerMonitor(greenlet.Greenlet):
         :param cluster: ClusterMonitor context
         """
 
-        services = [s for s in server_state.services.values() if s.fsid == cluster.fsid]
+        services = [
+            s for s in server_state.services.values() if s.fsid == cluster.fsid
+        ]
 
         frontend_addr = None
         backend_addr = None
@@ -655,14 +775,24 @@ class ServerMonitor(greenlet.Greenlet):
                 # Go find the mon in the monmap and tell me its addr
                 mon_map = cluster.get_sync_object_data(MonMap)
                 if mon_map is not None:
-                    mon = [mon for mon in mon_map['mons'] if mon['name'] == service.service_id][0]
+                    mon = [
+                        mon for mon in mon_map[
+                            'mons'
+                        ] if mon['name'] == service.service_id][0]
                     frontend_addr = mon['addr'].split(":")[0]
 
-            if (frontend_addr is None or backend_addr is None) and service.service_type == 'osd':
-                # Go find the OSD in the OSD map and tell me its frontend and backend addrs
+            if (
+                    frontend_addr is None or backend_addr is None
+            ) and service.service_type == 'osd':
+                # Go find the OSD in the OSD map and tell me its frontend and
+                # backend addrs
                 osd_map = cluster.get_sync_object_data(OsdMap)
                 if osd_map is not None:
-                    osd = [osd for osd in osd_map['osds'] if str(osd['osd']) == service.service_id]
+                    osd = [
+                        osd for osd in osd_map['osds'] if str(
+                            osd['osd']
+                        ) == service.service_id
+                    ]
                     # osd can be empty at this point if the OSD is DNE (it's
                     # in server_state.services, but not in the osd_map)
                     if len(osd) > 0:
@@ -674,10 +804,13 @@ class ServerMonitor(greenlet.Greenlet):
             'fqdn': server_state.fqdn,
             'hostname': server_state.hostname,
             'managed': server_state.managed,
-            'last_contact': server_state.last_contact.isoformat() if server_state.last_contact else None,
-            'boot_time': server_state.boot_time.isoformat() if server_state.boot_time else None,
+            'last_contact': server_state.last_contact.isoformat()
+            if server_state.last_contact else None,
+            'boot_time': server_state.boot_time.isoformat()
+            if server_state.boot_time else None,
             'ceph_version': server_state.ceph_version,
-            'services': [{'id': tuple(s.id), 'running': s.running} for s in services],
+            'services': [{'id': tuple(s.id),
+                          'running': s.running} for s in services],
             'frontend_addr': frontend_addr,
             'backend_addr': backend_addr
         }
