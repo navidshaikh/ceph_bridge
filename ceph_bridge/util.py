@@ -1,13 +1,13 @@
 import datetime
 
 from dateutil import tz
-import gevent.greenlet
 import gevent.event
+import gevent.greenlet
 
 
 def now():
-    """
-    A tz-aware now
+    """A tz-aware now
+
     """
     return datetime.datetime.utcnow().replace(tzinfo=tz.tzutc())
 
@@ -26,7 +26,6 @@ class Ticker(gevent.greenlet.Greenlet):
         while not self._complete.is_set():
             self._callback()
             self._complete.wait(self._period)
-
 
 
 def memoize(function):

@@ -1,22 +1,37 @@
-import traceback
-import gevent.event
 import etcd
-import uuid
+import gevent.event
 import json
 import time
+import traceback
 
-from tendrl.ceph_bridge.manager import config
+from tendrl.ceph_bridge.common.types import CLUSTER
+from tendrl.ceph_bridge.common.types import CRUSH_MAP
+from tendrl.ceph_bridge.common.types import CRUSH_NODE
+from tendrl.ceph_bridge.common.types import CRUSH_RULE
+from tendrl.ceph_bridge.common.types import CRUSH_TYPE
+from tendrl.ceph_bridge.common.types import NotFound
+from tendrl.ceph_bridge.common.types import OSD
+from tendrl.ceph_bridge.common.types import OSD_MAP
+from tendrl.ceph_bridge.common.types import OsdMap
+from tendrl.ceph_bridge.common.types import POOL
+from tendrl.ceph_bridge.common.types import SERVER
+from tendrl.ceph_bridge.common.types import ServiceId
+from tendrl.ceph_bridge.common.types import SYNC_OBJECT_STR_TYPE
+
 from tendrl.ceph_bridge.log import log
-from tendrl.ceph_bridge.common.types import OsdMap, SYNC_OBJECT_STR_TYPE, OSD, OSD_MAP, POOL, CLUSTER, CRUSH_NODE, CRUSH_MAP, CRUSH_RULE, CRUSH_TYPE, ServiceId,\
-    NotFound, SERVER
+from tendrl.ceph_bridge.manager import config
+
+import uuid
+
 
 class RpcInterface(object):
+
     def __init__(self, manager):
         self._manager = manager
 
     def __getattribute__(self, item):
-        """
-        Wrap functions with logging
+        """Wrap functions with logging
+
         """
         if item.startswith('_'):
             return object.__getattribute__(self, item)
@@ -24,11 +39,12 @@ class RpcInterface(object):
             attr = object.__getattribute__(self, item)
             if callable(attr):
                 def wrap(*args, **kwargs):
-                    log.debug("RpcInterface >> %s(%s, %s)" % (item, args, kwargs))
+                    log.debug("RpcInterface >> %s(%s, %s)" %
+                              (item, args, kwargs))
                     try:
                         rc = attr(*args, **kwargs)
                         log.debug("RpcInterface << %s" % item)
-                    except:
+                    except Exception:
                         log.exception("RpcInterface !! %s" % item)
                         raise
                     return rc
@@ -65,8 +81,8 @@ class RpcInterface(object):
             raise NotFound(POOL, pool_id)
 
     def get_cluster(self, fs_id):
-        """
-        Returns a dict, or None if not found
+        """Returns a dict, or None if not found
+
         """
         try:
             cluster = self._manager.clusters[fs_id]
@@ -92,20 +108,29 @@ class RpcInterface(object):
         self._manager.delete_cluster(fs_id)
 
     def get_sync_object(self, fs_id, object_type, path=None):
-        """
-        Get one of the objects that ClusterMonitor keeps a copy of from the mon, such
-        as the cluster maps.
+        """Get one of the objects that ClusterMonitor keeps a copy of from
+
+        the mon, such as the cluster maps.
 
         :param fs_id: The fsid of a cluster
-        :param object_type: String, one of SYNC_OBJECT_TYPES
-        :param path: List, optional, a path within the object to return instead of the whole thing
 
-        :return: the requested data, or None if it was not found (including if any element of ``path``
+        :param object_type: String, one of SYNC_OBJECT_TYPES
+
+        :param path: List, optional, a path within the object to return
+
+        instead of the whole thing
+
+        :return: the requested data, or None if it was not found
+
+        (including if any element of ``path``
+
                  was not found)
+
         """
 
         if path:
-            obj = self._fs_resolve(fs_id).get_sync_object(SYNC_OBJECT_STR_TYPE[object_type])
+            obj = self._fs_resolve(fs_id).get_sync_object(
+                SYNC_OBJECT_STR_TYPE[object_type])
             try:
                 for part in path:
                     if isinstance(obj, dict):
@@ -113,15 +138,18 @@ class RpcInterface(object):
                     else:
                         obj = getattr(obj, part)
             except (AttributeError, KeyError) as e:
-                log.exception("Exception %s traversing %s: obj=%s" % (e, path, obj))
+                log.exception("Exception %s traversing %s: obj=%s" %
+                              (e, path, obj))
                 raise NotFound(object_type, path)
             return obj
         else:
-            return self._fs_resolve(fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type])
+            return self._fs_resolve(
+                fs_id).get_sync_object_data(SYNC_OBJECT_STR_TYPE[object_type]
+                                            )
 
     def update(self, fs_id, object_type, object_id, attributes):
-        """
-        Modify an object in a cluster.
+        """Modify an object in a cluster.
+
         """
         cluster = self._fs_resolve(fs_id)
 
@@ -137,22 +165,30 @@ class RpcInterface(object):
             if 'id' not in attributes:
                 attributes['id'] = object_id
 
-            return cluster.request_update('update', POOL, object_id, attributes)
+            return cluster.request_update(
+                'update', POOL, object_id, attributes
+            )
         elif object_type == OSD_MAP:
-            return cluster.request_update('update_config', OSD, object_id, attributes)
+            return cluster.request_update(
+                'update_config', OSD, object_id, attributes
+            )
 
         elif object_type == CRUSH_MAP:
-            return cluster.request_update('update', CRUSH_MAP, object_id, attributes)
+            return cluster.request_update(
+                'update', CRUSH_MAP, object_id, attributes
+            )
 
         elif object_type == CRUSH_NODE:
-            return cluster.request_update('update', CRUSH_NODE, object_id, attributes)
+            return cluster.request_update(
+                'update', CRUSH_NODE, object_id, attributes
+            )
 
         else:
             raise NotImplementedError(object_type)
 
     def apply(self, fs_id, object_type, object_id, command):
-        """
-        Apply commands that do not modify an object in a cluster.
+        """Apply commands that do not modify an object in a cluster.
+
         """
         cluster = self._fs_resolve(fs_id)
 
@@ -165,23 +201,24 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def get_valid_commands(self, fs_id, object_type, object_ids):
-        """
-        Determine what commands can be run on OSD object_ids
+        """Determine what commands can be run on OSD object_ids
+
         """
         if object_type != OSD:
             raise NotImplementedError(object_type)
 
         cluster = self._fs_resolve(fs_id)
         try:
-            valid_commands = cluster.get_valid_commands(object_type, object_ids)
+            valid_commands = cluster.get_valid_commands(
+                object_type, object_ids)
         except KeyError as e:
             raise NotFound(object_type, str(e))
 
         return valid_commands
 
     def create(self, fs_id, object_type, attributes):
-        """
-        Create a new object in a cluster
+        """Create a new object in a cluster
+
         """
         cluster = self._fs_resolve(fs_id)
 
@@ -203,8 +240,8 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def get(self, fs_id, object_type, object_id):
-        """
-        Get one object from a particular cluster.
+        """Get one object from a particular cluster.
+
         """
 
         cluster = self._fs_resolve(fs_id)
@@ -214,13 +251,15 @@ class RpcInterface(object):
             return self._pool_resolve(cluster, object_id)
         elif object_type == CRUSH_NODE:
             try:
-                crush_node = cluster.get_sync_object(OsdMap).crush_node_by_id[object_id]
+                crush_node = cluster.get_sync_object(
+                    OsdMap).crush_node_by_id[object_id]
             except KeyError:
                 raise NotFound(CRUSH_NODE, object_id)
             return crush_node
         elif object_type == CRUSH_TYPE:
             try:
-                crush_type = cluster.get_sync_object(OsdMap).crush_type_by_id[object_id]
+                crush_type = cluster.get_sync_object(
+                    OsdMap).crush_type_by_id[object_id]
             except KeyError:
                 raise NotFound(CRUSH_TYPE, object_id)
             return crush_type
@@ -228,8 +267,8 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def list(self, fs_id, object_type, list_filter):
-        """
-        Get many objects
+        """Get many objects
+
         """
 
         cluster = self._fs_resolve(fs_id)
@@ -239,12 +278,17 @@ class RpcInterface(object):
         if object_type == OSD:
             result = osd_map['osds']
             if 'id__in' in list_filter:
-                result = [o for o in result if o['osd'] in list_filter['id__in']]
+                result = [o for o in result if o[
+                    'osd'] in list_filter['id__in']]
             if 'pool' in list_filter:
                 try:
-                    osds_in_pool = cluster.get_sync_object(OsdMap).osds_by_pool[list_filter['pool']]
+                    osds_in_pool = cluster.get_sync_object(
+                        OsdMap).osds_by_pool[
+                            list_filter['pool']
+                    ]
                 except KeyError:
-                    raise NotFound("Pool {0} does not exist".format(list_filter['pool']))
+                    raise NotFound(
+                        "Pool {0} does not exist".format(list_filter['pool']))
                 else:
                     result = [o for o in result if o['osd'] in osds_in_pool]
 
@@ -261,7 +305,9 @@ class RpcInterface(object):
             raise NotImplementedError(object_type)
 
     def _dump_request(self, request):
-        """UserRequest to JSON-serializable form"""
+        """UserRequest to JSON-serializable form
+
+        """
         return {
             'id': request.id,
             'state': request.state,
@@ -270,15 +316,18 @@ class RpcInterface(object):
             'status': request.status,
             'headline': request.headline,
             'requested_at': request.requested_at.isoformat(),
-            'completed_at': request.completed_at.isoformat() if request.completed_at else None
+            'completed_at':
+            request.completed_at.isoformat()
+            if request.completed_at else None
         }
 
     def get_request(self, request_id):
-        """
-        Get a JSON representation of a UserRequest
+        """Get a JSON representation of a UserRequest
+
         """
         try:
-            return self._dump_request(self._manager.requests.get_by_id(request_id))
+            return self._dump_request(
+                self._manager.requests.get_by_id(request_id))
         except KeyError:
             raise NotFound('request', request_id)
 
@@ -295,17 +344,25 @@ class RpcInterface(object):
         requests = self._manager.requests.get_all()
         return sorted([self._dump_request(r)
                        for r in requests
-                       if (state is None or r.state == state) and (fsid is None or r.fsid == fsid)],
-                      lambda a, b: cmp(b['requested_at'], a['requested_at']))
+                       if (
+            state is None or r.state == state
+        ) and (fsid is None or r.fsid == fsid)],
+            lambda a, b: cmp(b['requested_at'], a['requested_at']))
 
     def server_get(self, fqdn):
         return self._manager.servers.dump(self._server_resolve(fqdn))
 
     def server_list(self):
-        return [self._manager.servers.dump(s) for s in self._manager.servers.get_all()]
+        return [
+            self._manager.servers.dump(
+                s
+            ) for s in self._manager.servers.get_all()
+        ]
 
     def server_get_cluster(self, fqdn, fsid):
-        return self._manager.servers.dump_cluster(self._server_resolve(fqdn), self._fs_resolve(fsid))
+        return self._manager.servers.dump_cluster(
+            self._server_resolve(fqdn), self._fs_resolve(fsid)
+        )
 
     def server_list_cluster(self, fsid):
         return [
@@ -314,24 +371,33 @@ class RpcInterface(object):
         ]
 
     def server_by_service(self, services):
-        """
-        Return a list of 2-tuples mapping of service ID to server FQDN
+        """Return a list of 2-tuples mapping of service ID to server FQDN
 
-        Note that we would rather return a dict but tuple dict keys are awkward to serialize
+        Note that we would rather return a dict but tuple dict keys are
+
+        awkward to serialize
+
         """
-        result = self._manager.servers.list_by_service([ServiceId(*s) for s in services])
+        result = self._manager.servers.list_by_service(
+            [ServiceId(*s) for s in services])
         return result
 
     def server_delete(self, fqdn):
         return self._manager.servers.delete(fqdn)
 
     def status_by_service(self, services):
-        result = self._manager.servers.get_services([ServiceId(*s) for s in services])
-        return [({'running': ss.running, 'server': ss.server_state.fqdn, 'status': ss.status} if ss else None)
-                for ss in result]
+        result = self._manager.servers.get_services(
+            [ServiceId(*s) for s in services])
+        return [
+            ({'running': ss.running, 'server': ss.server_state.fqdn,
+              'status': ss.status} if ss else None
+             )
+            for ss in result
+        ]
 
 
 class EtcdRPC(object):
+
     def __init__(self, methods):
         self._methods = self._filter_methods(EtcdRPC, self, methods)
         etcd_kwargs = {'port': int(config.get("bridge", "etcd_port")),
@@ -340,20 +406,19 @@ class EtcdRPC(object):
         self.client = etcd.Client(**etcd_kwargs)
         self.bridge_id = str(uuid.uuid4())
 
-
-
     @staticmethod
     def _filter_methods(cls, self, methods):
         if hasattr(methods, '__getitem__'):
             return methods
         server_methods = set(getattr(self, k) for k in dir(cls) if not
-                k.startswith('_'))
+                             k.startswith('_'))
         return dict((k, getattr(methods, k))
-                for k in dir(methods)
-                if callable(getattr(methods, k))
-                and not k.startswith('_')
-                and getattr(methods, k) not in server_methods
-                )
+                    for k in dir(methods)
+                    if callable(
+            getattr(methods, k)
+        ) and not k.startswith('_') and getattr(
+                        methods, k) not in server_methods
+        )
 
     def __call__(self, method, kwargs=None, *args):
         if method not in self._methods:
@@ -363,7 +428,8 @@ class EtcdRPC(object):
     def _acceptor(self):
         while True:
             raw_jobs = self.client.read("/rawops/jobs")
-            jobs = sorted(json.loads(raw_jobs.value), key=lambda k: int(k['updated']))
+            jobs = sorted(json.loads(raw_jobs.value),
+                          key=lambda k: int(k['updated']))
             # Pick up the oldest job that is not locked by any other bridge
             try:
                 for job in jobs:
@@ -371,26 +437,29 @@ class EtcdRPC(object):
                     if not job['locked_by']:
                         # First lock the job
 
-                        log.info("%s found new job_%s" % (self.__class__.__name__, job['job_id']))
+                        log.info("%s found new job_%s" %
+                                 (self.__class__.__name__, job['job_id']))
                         log.debug(job['msg'])
                         job['locked_by'] = self.bridge_id
                         job['status'] = "in-progress"
                         job['updated'] = int(time.time())
                         raw_jobs.value = json.dumps(jobs)
                         self.client.write("/rawops/jobs", raw_jobs.value)
-                        log.info("%s Running new job_%s" % (self.__class__.__name__, job['job_id']))
-                        self.__call__(job['msg']['func'], kwargs=job['msg']['kwargs'])
+                        log.info("%s Running new job_%s" %
+                                 (self.__class__.__name__, job['job_id']))
+                        self.__call__(job['msg']['func'],
+                                      kwargs=job['msg']['kwargs'])
                         job['updated'] = int(time.time())
                         job['status'] = "complete"
                         raw_jobs.value = json.dumps(jobs)
                         self.client.write("/rawops/jobs", raw_jobs.value)
-                        log.info("%s Completed job_%s" % (self.__class__.__name__, job['job_id']))
+                        log.info("%s Completed job_%s" %
+                                 (self.__class__.__name__, job['job_id']))
 
                         break
             except Exception as ex:
                 log.error(ex)
             gevent.sleep(1)
-
 
     def run(self):
         self._acceptor()
@@ -398,10 +467,12 @@ class EtcdRPC(object):
     def stop(self):
         pass
 
+
 class EtcdThread(gevent.greenlet.Greenlet):
-    """
-    Present a ZeroRPC API for users
+    """Present a ZeroRPC API for users
+
     to request state changes.
+
     """
 
     # In case server.run throws an exception, prevent
@@ -427,7 +498,7 @@ class EtcdThread(gevent.greenlet.Greenlet):
             try:
                 log.info("%s run..." % self.__class__.__name__)
                 self._server.run()
-            except:
+            except Exception:
                 log.error(traceback.format_exc())
                 self._complete.wait(self.EXCEPTION_BACKOFF)
 

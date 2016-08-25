@@ -1,10 +1,10 @@
-
-from etcdobj import EtcdObj, fields
+from etcdobj import EtcdObj
+from etcdobj import fields
 
 
 class Server(EtcdObj):
-    """
-    A table of the servers seen by ServerMonitor, lazily updated
+    """A table of the servers seen by ServerMonitor, lazily updated
+
     """
     __name__ = 'raw/ceph/%s/servers/%s'
 
@@ -23,9 +23,10 @@ class Server(EtcdObj):
 
 
 class Service(EtcdObj):
-    """
-    A table of the ceph services seen by ServerMonitor, usually
+    """A table of the ceph services seen by ServerMonitor, usually
+
     each one is associated with a Server, lazily updated.
+
     """
     __name__ = 'raw/ceph/%s/services/%s/%s/%s'
 
@@ -43,5 +44,6 @@ class Service(EtcdObj):
     server_fqdn = fields.StrField("server_fqdn")
 
     def render(self):
-        self.__name__ = self.__name__ % (self.fsid, self.server_fqdn, self.service_type, self.service_id)
+        self.__name__ = self.__name__ % (
+            self.fsid, self.server_fqdn, self.service_type, self.service_id)
         return super(Service, self).render()

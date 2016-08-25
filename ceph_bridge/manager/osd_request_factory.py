@@ -1,6 +1,9 @@
+from tendrl.ceph_bridge.common.types import OSD_FLAGS
+from tendrl.ceph_bridge.common.types import OSD_IMPLEMENTED_COMMANDS
+from tendrl.ceph_bridge.common.types import OsdMap
 from tendrl.ceph_bridge.manager.request_factory import RequestFactory
-from tendrl.ceph_bridge.common.types import OsdMap, OSD_IMPLEMENTED_COMMANDS, OSD_FLAGS
-from tendrl.ceph_bridge.manager.user_request import OsdMapModifyingRequest, RadosRequest
+from tendrl.ceph_bridge.manager.user_request import OsdMapModifyingRequest
+from tendrl.ceph_bridge.manager.user_request import RadosRequest
 
 
 class OsdRequestFactory(RequestFactory):
@@ -9,23 +12,41 @@ class OsdRequestFactory(RequestFactory):
 
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
 
-        # in/out/down take a vector of strings called 'ids', while 'reweight' takes a single integer
+        # in/out/down take a vector of strings called
+        # 'ids', while 'reweight' takes a single integer
 
-        if 'in' in attributes and bool(attributes['in']) != bool(osd_map.osds_by_id[osd_id]['in']):
+        if 'in' in attributes and bool(
+                attributes['in']
+        ) != bool(osd_map.osds_by_id[osd_id]['in']):
             if attributes['in']:
-                commands.append(('osd in', {'ids': [attributes['id'].__str__()]}))
+                commands.append(
+                    ('osd in', {'ids': [attributes['id'].__str__()]})
+                )
             else:
-                commands.append(('osd out', {'ids': [attributes['id'].__str__()]}))
+                commands.append(
+                    ('osd out', {'ids': [attributes['id'].__str__()]})
+                )
 
-        if 'up' in attributes and bool(attributes['up']) != bool(osd_map.osds_by_id[osd_id]['up']):
+        if 'up' in attributes and bool(
+                attributes['up']
+        ) != bool(osd_map.osds_by_id[osd_id]['up']):
             if not attributes['up']:
-                commands.append(('osd down', {'ids': [attributes['id'].__str__()]}))
+                commands.append(
+                    ('osd down', {'ids': [attributes['id'].__str__()]})
+                )
             else:
-                raise RuntimeError("It is not valid to set a down OSD to be up")
+                raise RuntimeError(
+                    "It is not valid to set a down OSD to be up"
+                )
 
         if 'reweight' in attributes:
-            if attributes['reweight'] != float(osd_map.osd_tree_node_by_id[osd_id]['reweight']):
-                commands.append(('osd reweight', {'id': osd_id, 'weight': attributes['reweight']}))
+            if attributes['reweight'] != float(
+                    osd_map.osd_tree_node_by_id[osd_id]['reweight']
+            ):
+                commands.append(
+                    ('osd reweight',
+                     {'id': osd_id, 'weight': attributes['reweight']})
+                )
 
         if not commands:
             # Returning None indicates no-op
@@ -36,44 +57,63 @@ class OsdRequestFactory(RequestFactory):
 
         if msg_attrs.keys() == ['in']:
             message = "Marking {cluster_name}-osd.{id} {state}".format(
-                cluster_name=self._cluster_monitor.name, id=osd_id, state=("in" if msg_attrs['in'] else "out"))
+                cluster_name=self._cluster_monitor.name,
+                id=osd_id,
+                state=("in" if msg_attrs['in'] else "out")
+            )
         elif msg_attrs.keys() == ['up']:
             message = "Marking {cluster_name}-osd.{id} down".format(
                 cluster_name=self._cluster_monitor.name, id=osd_id)
         elif msg_attrs.keys() == ['reweight']:
             message = "Re-weighting {cluster_name}-osd.{id} to {pct}%".format(
-                cluster_name=self._cluster_monitor.name, id=osd_id, pct="{0:.1f}".format(msg_attrs['reweight'] * 100.0))
+                cluster_name=self._cluster_monitor.name,
+                id=osd_id,
+                pct="{0:.1f}".format(msg_attrs['reweight'] * 100.0)
+            )
         else:
             message = "Modifying {cluster_name}-osd.{id} ({attrs})".format(
-                cluster_name=self._cluster_monitor.name, id=osd_id, attrs=", ".join("%s=%s" % (k, v) for k, v in msg_attrs.items()))
+                cluster_name=self._cluster_monitor.name,
+                id=osd_id,
+                attrs=", ".join("%s=%s" % (k, v) for k, v in msg_attrs.items())
+            )
 
-        return OsdMapModifyingRequest(message, self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+        return OsdMapModifyingRequest(
+            message,
+            self._cluster_monitor.fsid,
+            self._cluster_monitor.name, commands
+        )
 
     def scrub(self, osd_id):
         return RadosRequest(
-            "Initiating scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+            "Initiating scrub on {cluster_name}-osd.{id}".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id
+            ),
             self._cluster_monitor.fsid,
             self._cluster_monitor.name,
             [('osd scrub', {'who': str(osd_id)})])
 
     def deep_scrub(self, osd_id):
         return RadosRequest(
-            "Initiating deep-scrub on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name,
-                                                                      id=osd_id),
+            "Initiating deep-scrub on {cluster_name}-osd.{id}".format(
+                cluster_name=self._cluster_monitor.name,
+                id=osd_id
+            ),
             self._cluster_monitor.fsid,
             self._cluster_monitor.name,
             [('osd deep-scrub', {'who': str(osd_id)})])
 
     def repair(self, osd_id):
         return RadosRequest(
-            "Initiating repair on {cluster_name}-osd.{id}".format(cluster_name=self._cluster_monitor.name, id=osd_id),
+            "Initiating repair on {cluster_name}-osd.{id}".format(
+                cluster_name=self._cluster_monitor.name, id=osd_id
+            ),
             self._cluster_monitor.fsid,
             self._cluster_monitor.name,
             [('osd repair', {'who': str(osd_id)})])
 
     def get_valid_commands(self, osds):
-        """
-        For each OSD in osds list valid commands
+        """For each OSD in osds list valid commands
+
         """
         ret_val = {}
         osd_map = self._cluster_monitor.get_sync_object(OsdMap)
@@ -90,7 +130,9 @@ class OsdRequestFactory(RequestFactory):
 
         flags_not_implemented = set(attributes.keys()) - set(OSD_FLAGS)
         if flags_not_implemented:
-            raise RuntimeError("%s not valid to set/unset" % list(flags_not_implemented))
+            raise RuntimeError(
+                "%s not valid to set/unset" % list(flags_not_implemented)
+            )
 
         flags_to_set = set(k for k, v in attributes.iteritems() if v)
         flags_to_unset = set(k for k, v in attributes.iteritems() if not v)
@@ -114,8 +156,14 @@ class OsdRequestFactory(RequestFactory):
             return OsdMapModifyingRequest(
                 "Modifying OSD config {cluster_name} ({attrs})".format(
                     cluster_name=self._cluster_monitor.name,
-                    attrs=", ".join("%s=%s" % (k, v) for k, v in attributes.items())
-                ), self._cluster_monitor.fsid, self._cluster_monitor.name, commands)
+                    attrs=", ".join(
+                        "%s=%s" % (k, v) for k, v in attributes.items()
+                    )
+                ),
+                self._cluster_monitor.fsid,
+                self._cluster_monitor.name,
+                commands
+            )
 
         else:
             return None
