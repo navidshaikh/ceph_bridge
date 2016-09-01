@@ -229,7 +229,25 @@ rados_atoms:
 - mkpool
 - rmpool
 - pool.get
-- WIP
+- pool.put
+- pool.rm
+- pool.listwatchers
+- pool.ls
+- pool.lssnap
+- pool.clonedata
+- pool.mksnap
+- pool.rmsnap
+- pool.bench
+- pool.cleanup
+- pool.listomapkeys
+- pool.listomapvals
+- pool.getomapval
+- pool.setomapval
+- pool.rmomapkey
+- pool.getomapheader
+- pool.setomapheader:
+                  attrs:
+                  - attr_1
 
 
 atom1:
