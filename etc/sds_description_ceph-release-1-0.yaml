@@ -1,0 +1,267 @@
+---
+sds_version: "ceph-release-1-0"
+valid_objects:
+- auth
+- compact
+- config-key
+- daemon
+- daemonperf
+- df
+- fs
+- fsid
+- health
+- heap
+- injectargs
+- log
+- mds
+- mon
+- mon_status
+- osd
+- pg
+- quorum
+- quorum_status
+- report
+- scrub
+- status
+- rados
+
+auth_atoms: #An atom/action is the smallest unit, An atom is expected to name desired input values (requirements) and name outputs (provided values). 
+- add
+- caps
+- del
+- export
+- get
+- get-key
+- get-or-create-key
+- import
+- list
+- print-key
+compact_atoms: #compact
+- run
+config-key_atoms:
+- del
+- exists
+- get
+- list
+- put
+daemon_atoms:
+- run
+daemonperf_atoms:
+- run
+fs_atoms:
+- ls
+- new
+- reset
+- rm
+fsid_atoms:
+- run
+heap_atoms:
+- dump
+- start_profiler
+- stop_profiler
+- release
+- stats
+injectargs_atoms:
+- run
+log_atoms:
+- run
+mds_atoms:
+- add_data_pool
+- cluster_down
+- cluster_up
+- compat.rm_compat
+- compat.rm_incompat
+- compat.show
+- deactivate
+- dump
+- fail
+- getmap
+- newfs
+- remove_data_pool
+- rm
+- rmfailed
+- set.max_mds
+- set.max_file_size
+- set.allow_new_snaps
+- set.inline_data
+- set_state
+- stat
+- stop
+- tell
+mon_atoms:
+- add
+- dump
+- getmap
+- remove
+- stat
+mon_status_atoms:
+- run
+osd_atoms:
+- blacklist.add
+- blacklist.ls
+- blacklist.rm
+- blocked-by
+- create
+- crush.add
+- crush.add-bucket
+- crush.create-or-move
+- crush.dump
+- crush.get-tunable
+- crush.link
+- crush.move
+- crush.remove
+- crush.rename-bucket
+- crush.reweight
+- crush.reweight-all
+- crush.reweight-subtree
+- crush.rm
+- crush.rule.create-erasure
+- crush.rule.create-simple
+- crush.rule.dump
+- crush.rule.ls
+- crush.rule.list
+- crush.rule.rm
+- crush.set
+- crush.set-tunable
+- crush.show-tunables
+- crush.tree
+- crush.tunables.[legacy|argonaut|bobtail|firefly|hammer|optimal|default]
+- crush.unlink
+- df
+- deep-scrub
+- down
+- dump
+- erasure-code-profile.get
+- erasure-code-profile.ls
+- erasure-code-profile.rm
+- erasure-code-profile.set
+- find
+- getcrushmap
+- getmap
+- getmaxosd
+- in
+- lost
+- ls
+- lspools
+- map
+- metadata
+- out
+- pause
+- perf
+- pg-temp
+- pool.create
+- pool.delete
+- pool.get.[size|min_size|crash_replay_interval|pg_num|pgp_num|crush_ruleset|auid|write_fadvise_dontneed|hit_set_type|hit_set_period|hit_set_count|hit_set_fpp|
+target_max_objects|target_max_bytes|cache_target_dirty_ratio|cache_target_dirty_high_ratio|cache_target_full_ratio|cache_min_flush_age|cache_min_evict_age|
+min_read_recency_for_promote|hit_set_grade_decay_rate|hit_set_search_last_n]
+- pool.get-quota
+- pool.ls
+- pool.mksnap
+- pool.rename
+- pool.rmsnap
+- pool.set.[size|min_size|crash_replay_interval|pg_num|pgp_num|crush_ruleset|hashpspool|nodelete|nopgchange|nosizechange|
+hit_set_type|hit_set_period|hit_set_count|hit_set_fpp|debug_fake_ec_pool|target_max_bytes|target_max_objects|cache_target_dirty_ratio|
+cache_target_dirty_high_ratio|cache_target_full_ratio|cache_min_flush_age|cache_min_evict_age|auid|min_read_recency_for_promote|write_fadvise_dontneed|hit_set_grade_decay_rate|
+hit_set_search_last_n]
+- pool.set-quota
+- pool.stats
+- primary-affinity
+- primary-temp
+- repair
+- reweight
+- reweight-by-pg
+- reweight-by-utilization
+- rm
+- scrub
+- set.[full|pause|noup|nodown|noout|noin|nobackfill|norebalance|norecover|noscrub|nodeep-scrub|notieragent]
+- setcrushmap
+- setmaxosd
+- stat
+- thrash
+- tier.add
+- tier.add-cache
+- tier.cache-mode.[none|writeback|forward|readonly|readforward|readproxy]
+- tier.remove
+- tier.remove-overlay
+- tier.set-overlay
+- tree
+- unpause
+- unset.[full|pause|noup|nodown|noout|noin|nobackfill|norebalance|norecover|noscrub|nodeep-scrub|notieragent]
+
+pg_atoms:
+- debug.[unfound_objects_exist|degraded_pgs_exist]
+- deep-scrub
+- dump
+- dump_json
+- dump_pools_json
+- dump_stuck
+- force_create_pg
+- getmap
+- ls
+- ls-by-osd
+- ls-by-pool
+- ls-by-primary
+- map
+- repair
+- scrub
+- set_full_ratio
+- set_nearfull_ratio
+- stat
+
+quorum_atoms:
+- run.[enter|exit]
+
+quorum_status_atoms:
+- run
+
+report_atoms:
+- run
+
+scrub_atoms:
+- run
+
+status_atoms:
+- run
+
+rados_atoms:
+- lspools
+- df
+- mkpool
+- rmpool
+- pool.get
+- WIP
+
+
+atom1:
+  conditions: 
+    pre_condition : ["obj1.attr_is_<condition>"]
+    post_condition: ["obj1.attr_is_<condition>", "obj2.attr_is_<condition>"]
+  name: Meaningful name for this atom, should be something that is distinguishable and understandable for notification, debugging, storing and any other similar purposes
+  provides:
+  - A set, string or list of items that this will be providing (or could provide) to others, used to correlate and associate the thing/s this atom produces, if it produces anything at all.
+
+  inject:
+  - An immutable input_name => value dictionary which specifies any initial inputs that should be automatically injected into the atoms scope before the atom execution commences (this allows for providing atom local values that do not need to be provided by other atoms/dependents).
+
+  rebind:
+  - A dict of key/value pairs used to define argument name conversions for inputs to this atom’s execute method
+  revert_rebind:
+  - The same as rebind but for the revert method. If unpassed, rebind will be used instead
+  requires:
+  - A set or list of required inputs for this atom’s execute method
+  revert_requires:
+  - A set or list of required inputs for this atom’s revert method. If unpassed, `requires will be used
+  version: An immutable version that associates version information with this atom. It can be useful in resuming older versions of atoms. Standard major, minor versioning concepts should apply
+  save_as: An immutable output resource name OrderedDict this atom produces that other atoms may depend on this atom providing. The format is output index (or key when a dictionary is returned from the execute method) to stored argument name
+  rebind : An immutable input resource OrderedDict that can be used to alter the inputs given to this atom. It is typically used for mapping a prior atoms output into the names that this atom expects (in a way this is like remapping a namespace of another atom into the namespace of this atom).
+  revert_rebind : The same as rebind but for the revert method. This should only differ from rebind if the revert method has a different signature from execute or a different revert_rebind value was received.
+optional : A OrderedSet of inputs that are optional for this atom to execute.
+revert_optional : The revert version of optional.
+
+flow: #A flow/operation is a structure that defines relationships between atoms. You can add atoms and other flows (as subflows) to the flow, and the flow provides a way to implicitly or explicitly define how they are interdependent, flows can be linear, unordered, graph based
+  name: A non-unique name for this flow
+  atoms: A OrderedSet of atoms to be executed in this flow
+  conditions: 
+    pre_condition : ["obj1.attr_is_<condition>"]
+    post_condition: ["obj1.attr_is_<condition>", "obj2.attr_is_<condition>"]
+  
