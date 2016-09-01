@@ -1,0 +1,217 @@
+---
+sds_version: ceph-release-1-0
+
+object_details:
+  auth:
+    atoms: ["add", "caps", "del", "export", "get", "get-key", "get-or-create-key", "import", "list", "print-key"]
+  compact:
+    atoms: ["call"]
+    call:
+      help: "Causes compaction of monitor’s leveldb storage"
+      pre_run: []
+      post_run: []
+      provides: []
+      name: "compact.call"
+      inject: []
+      requires: []
+  config-key:
+    atoms: []
+
+#############################WIP##############################################
+
+config-key_atoms:
+- del
+- exists
+- get
+- list
+- put
+daemon_atoms:
+- run
+daemonperf_atoms:
+- run
+fs_atoms:
+- ls
+- new
+- reset
+- rm
+fsid_atoms:
+- run
+heap_atoms:
+- dump
+- start_profiler
+- stop_profiler
+- release
+- stats
+injectargs_atoms:
+- run
+log_atoms:
+- run
+mds_atoms:
+- add_data_pool
+- cluster_down
+- cluster_up
+- compat.rm_compat
+- compat.rm_incompat
+- compat.show
+- deactivate
+- dump
+- fail
+- getmap
+- newfs
+- remove_data_pool
+- rm
+- rmfailed
+- set.max_mds
+- set.max_file_size
+- set.allow_new_snaps
+- set.inline_data
+- set_state
+- stat
+- stop
+- tell
+mon_atoms:
+- add
+- dump
+- getmap
+- remove
+- stat
+mon_status_atoms:
+- run
+osd_atoms:
+- blacklist.add
+- blacklist.ls
+- blacklist.rm
+- blocked-by
+- create
+- crush.add
+- crush.add-bucket
+- crush.create-or-move
+- crush.dump
+- crush.get-tunable
+- crush.link
+- crush.move
+- crush.remove
+- crush.rename-bucket
+- crush.reweight
+- crush.reweight-all
+- crush.reweight-subtree
+- crush.rm
+- crush.rule.create-erasure
+- crush.rule.create-simple
+- crush.rule.dump
+- crush.rule.ls
+- crush.rule.list
+- crush.rule.rm
+- crush.set
+- crush.set-tunable
+- crush.show-tunables
+- crush.tree
+- crush.tunables.[legacy|argonaut|bobtail|firefly|hammer|optimal|default]
+- crush.unlink
+- df
+- deep-scrub
+- down
+- dump
+- erasure-code-profile.get
+- erasure-code-profile.ls
+- erasure-code-profile.rm
+- erasure-code-profile.set
+- find
+- getcrushmap
+- getmap
+- getmaxosd
+- in
+- lost
+- ls
+- lspools
+- map
+- metadata
+- out
+- pause
+- perf
+- pg-temp
+- pool.create
+- pool.delete
+- pool.get
+- pool.get-quota
+- pool.ls
+- pool.mksnap
+- pool.rename
+- pool.rmsnap
+- pool.set.
+- pool.set-quota
+- pool.stats
+- primary-affinity
+- primary-temp
+- repair
+- reweight
+- reweight-by-pg
+- reweight-by-utilization
+- rm
+- scrub
+- set.[full|pause|noup|nodown|noout|noin|nobackfill|norebalance|norecover|noscrub|nodeep-scrub|notieragent]
+- setcrushmap
+- setmaxosd
+- stat
+- thrash
+- tier.add
+- tier.add-cache
+- tier.cache-mode.[none|writeback|forward|readonly|readforward|readproxy]
+- tier.remove
+- tier.remove-overlay
+- tier.set-overlay
+- tree
+- unpause
+- unset
+pg_atoms:
+- debug.[unfound_objects_exist|degraded_pgs_exist]
+- deep-scrub
+- dump
+- dump_json
+- dump_pools_json
+- dump_stuck
+- force_create_pg
+- getmap
+- ls
+- ls-by-osd
+- ls-by-pool
+- ls-by-primary
+- map
+- repair
+- scrub
+- set_full_ratio
+- set_nearfull_ratio
+- stat
+quorum_atoms:
+- run.[enter|exit]
+quorum_status_atoms:
+- run
+report_atoms:
+- run
+scrub_atoms:
+- run
+status_atoms:
+- run
+rados_atoms:
+- lspools
+- df
+- mkpool
+- rmpool
+- pool.get
+- pool.put
+- pool.rm
+- pool.listwatchers
+- pool.ls
+- pool.lssnap
+- pool.clonedata
+- pool.mksnap
+- pool.rmsnap
+- pool.bench
+- pool.cleanup
+- pool.listomapkeys
+- pool.listomapvals
+- pool.getomapval
+- pool.setomapval
+- pool.rmomapkey
+- pool.getomapheader
+- pool.setomapheader
